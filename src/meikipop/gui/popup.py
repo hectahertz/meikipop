@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QFrame, QApplication
 
 from meikipop.config.config import config, IS_MACOS
 from meikipop.dictionary.lookup import DictionaryEntry, KanjiEntry
+from meikipop.gui.input import toggle_macos_play_pause_key
 from meikipop.gui.magpie_manager import magpie_manager
 
 # macOS-specific imports for focus management
@@ -29,6 +30,7 @@ class Popup(QWidget):
         self._last_latest_data = None
         self._data_lock = threading.Lock()
         self._previous_active_window_on_mac = None
+        self._auto_pause_media_triggered = False
 
         self.shared_state = shared_state
         self.input_loop = input_loop
@@ -408,7 +410,15 @@ class Popup(QWidget):
         if not self.is_visible:
             return
         self.hide()
+
+    def hideEvent(self, event):
+        was_visible = self.is_visible
+        super().hideEvent(event)
+        if not was_visible:
+            return
+
         self.is_visible = False
+        self._resume_auto_paused_media()
         QTimer.singleShot(50, lambda: self._release_lock_safely())  # prevent popup from being screenshotted
         self._restore_focus_on_mac()
 
@@ -426,11 +436,24 @@ class Popup(QWidget):
         logger.debug("...successfully acquired lock by show_popup")
 
         self._store_active_window_on_mac()
+        self._pause_media_for_popup()
+        self.is_visible = True
         self.show()
         if IS_MACOS:
             self.raise_()
 
-        self.is_visible = True
+    def _pause_media_for_popup(self):
+        if config.auto_pause_media and toggle_macos_play_pause_key():
+            self._auto_pause_media_triggered = True
+
+    def _resume_auto_paused_media(self):
+        if not self._auto_pause_media_triggered:
+            return
+
+        try:
+            toggle_macos_play_pause_key()
+        finally:
+            self._auto_pause_media_triggered = False
 
     def reapply_settings(self):
         logger.debug("Popup: Re-applying settings and triggering font recalibration.")

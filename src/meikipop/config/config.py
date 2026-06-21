@@ -38,6 +38,7 @@ class Config:
             'auto_scan_mode_lookups_without_hotkey': True,
             'auto_scan_interval_seconds': 0.5,
             'auto_scan_on_mouse_move': True,
+            'auto_pause_media': False,
             'magpie_compatibility': True
         },
         'Theme': {

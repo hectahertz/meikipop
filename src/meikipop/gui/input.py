@@ -19,6 +19,38 @@ else:
     import keyboard
 
 
+NX_KEYTYPE_PLAY = 16
+NX_SUBTYPE_AUX_CONTROL_BUTTONS = 8
+NS_SYSTEM_DEFINED = 14
+KEY_DOWN_STATE = 0xA
+KEY_UP_STATE = 0xB
+
+
+def toggle_macos_play_pause_key() -> bool:
+    """Toggle macOS media playback using the system Play/Pause key event."""
+    if not IS_MACOS:
+        return False
+
+    try:
+        for state in (KEY_DOWN_STATE, KEY_UP_STATE):
+            event = NSEvent.otherEventWithType_location_modifierFlags_timestamp_windowNumber_context_subtype_data1_data2_(
+                NS_SYSTEM_DEFINED,
+                (0, 0),
+                state << 8,
+                0,
+                0,
+                None,
+                NX_SUBTYPE_AUX_CONTROL_BUTTONS,
+                (NX_KEYTYPE_PLAY << 16) | (state << 8),
+                -1,
+            )
+            Quartz.CGEventPost(Quartz.kCGHIDEventTap, event.CGEvent())
+        return True
+    except Exception as e:
+        logger.warning(f"Failed to toggle macOS Play/Pause key: {e}")
+        return False
+
+
 logger = logging.getLogger(__name__)
 
 class LinuxX11KeyboardController:
