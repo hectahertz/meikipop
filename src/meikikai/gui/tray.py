@@ -44,7 +44,7 @@ class TrayIcon(QSystemTrayIcon):
         self.auto_pause_media_action = self.menu.addAction("Auto Pause Media")
         self.auto_pause_media_action.setCheckable(True)
         self.auto_pause_media_action.setToolTip(
-            "Toggle the macOS Play/Pause media key when the popup opens, then toggle it again when the popup closes."
+            "Pause media when the popup opens, then resume only if media was playing before."
         )
         self.auto_pause_media_action.setChecked(config.auto_pause_media)
         self.auto_pause_media_action.triggered.connect(self.set_auto_pause_media_state)

@@ -1,11 +1,11 @@
 # meikikai/gui/input.py
 import ctypes
 import logging
+import subprocess
 import threading
 import time
 
 import Quartz
-from AppKit import NSEvent
 from pynput import mouse
 
 try:
@@ -17,19 +17,40 @@ from meikikai.config.config import config
 
 logger = logging.getLogger(__name__)
 
-NX_KEYTYPE_PLAY = 16
-NX_SUBTYPE_AUX_CONTROL_BUTTONS = 8
-NS_SYSTEM_DEFINED = 14
-KEY_DOWN_STATE = 0xA
-KEY_UP_STATE = 0xB
+MEDIA_REMOTE_BUNDLE_PATH = "/System/Library/PrivateFrameworks/MediaRemote.framework"
+MEDIA_REMOTE_FRAMEWORK_PATH = f"{MEDIA_REMOTE_BUNDLE_PATH}/MediaRemote"
+MEDIA_REMOTE_OSASCRIPT_TIMEOUT_SECONDS = 0.35
 
-MEDIA_REMOTE_FRAMEWORK_PATH = "/System/Library/PrivateFrameworks/MediaRemote.framework/MediaRemote"
 MR_COMMAND_PLAY = 0
 MR_COMMAND_PAUSE = 1
 
 _MEDIA_REMOTE_UNAVAILABLE = object()
 _media_remote_framework = None
 _media_remote_send_command = None
+
+MEDIA_REMOTE_NOW_PLAYING_JXA = """
+ObjC.import('Foundation');
+function run() {
+  const bundle = $.NSBundle.bundleWithPath('/System/Library/PrivateFrameworks/MediaRemote.framework');
+  if (!bundle) return 'unknown';
+  bundle.load;
+
+  const requestClass = $.NSClassFromString('MRNowPlayingRequest');
+  if (!requestClass) return 'unknown';
+
+  const item = requestClass.localNowPlayingItem;
+  if (!item) return 'unknown';
+
+  const info = item.nowPlayingInfo;
+  if (!info) return 'unknown';
+
+  const rate = info.valueForKey('kMRMediaRemoteNowPlayingInfoPlaybackRate');
+  if (rate === undefined || rate === null) return '0';
+
+  const value = Number(rate.js);
+  return isFinite(value) && value > 0 ? '1' : '0';
+}
+"""
 
 
 def is_process_trusted_for_accessibility(prompt: bool = False) -> bool:
@@ -106,38 +127,43 @@ def play_macos_media() -> bool:
     return _send_macos_media_remote_command(MR_COMMAND_PLAY, "Play")
 
 
-def toggle_macos_play_pause_key() -> bool:
-    """Toggle macOS media playback using the system Play/Pause key event."""
-    if not is_process_trusted_for_accessibility():
-        logger.warning(
-            "Auto Pause Media requires macOS Accessibility permission for this app or terminal. "
-            "Enable it in System Settings > Privacy & Security > Accessibility."
+def is_macos_media_playing() -> bool:
+    """Return whether the current macOS Now Playing app is actively playing."""
+    try:
+        result = subprocess.run(
+            ["/usr/bin/osascript", "-l", "JavaScript", "-e", MEDIA_REMOTE_NOW_PLAYING_JXA],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=MEDIA_REMOTE_OSASCRIPT_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        logger.debug("Timed out querying MediaRemote playback status via osascript.")
+        return False
+    except Exception as e:
+        logger.warning(f"Failed to query MediaRemote playback status via osascript: {e}")
+        return False
+
+    if result.returncode != 0:
+        logger.debug(
+            "osascript MediaRemote playback status query failed: "
+            f"{result.stderr.strip() or result.stdout.strip()}"
         )
         return False
 
-    try:
-        event_tap = getattr(Quartz, 'kCGHIDEventTap', 0)
-        for state in (KEY_DOWN_STATE, KEY_UP_STATE):
-            event = NSEvent.otherEventWithType_location_modifierFlags_timestamp_windowNumber_context_subtype_data1_data2_(
-                NS_SYSTEM_DEFINED,
-                (0, 0),
-                state << 8,
-                0,
-                0,
-                0,
-                NX_SUBTYPE_AUX_CONTROL_BUTTONS,
-                (NX_KEYTYPE_PLAY << 16) | (state << 8),
-                -1,
-            )
-            cg_event = event.CGEvent()
-            if cg_event is None:
-                logger.warning("Failed to create macOS Play/Pause CGEvent.")
-                return False
-            Quartz.CGEventPost(event_tap, cg_event)
+    status = result.stdout.strip().splitlines()[-1:] or ["unknown"]
+    if status[0] == "1":
         return True
-    except Exception as e:
-        logger.warning(f"Failed to toggle macOS Play/Pause key: {e}")
+    if status[0] != "0":
+        logger.debug(f"osascript MediaRemote playback status was inconclusive: {status[0]}")
+    return False
+
+
+def pause_macos_media_if_playing() -> bool:
+    """Pause macOS media only when Now Playing reports active playback."""
+    if not is_macos_media_playing():
         return False
+    return pause_macos_media()
 
 
 class InputLoop(threading.Thread):

@@ -48,7 +48,7 @@ def request_screen_recording_access():
 
 
 def request_input_access():
-    """Ask macOS to validate Accessibility access for media key automation."""
+    """Ask macOS to validate Accessibility access for input handling."""
     try:
         request_accessibility_access()
     except Exception:
