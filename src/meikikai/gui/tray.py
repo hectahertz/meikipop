@@ -1,6 +1,7 @@
 # meikikai/gui/tray.py
 import os
 
+from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QIcon, QAction, QActionGroup
 from PyQt6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
 
@@ -175,4 +176,18 @@ class TrayIcon(QSystemTrayIcon):
 
     def show_settings(self):
         settings_dialog = SettingsDialog(self.ocr_processor, self.popup_window, self.input_loop, self.lookup, self)
+        self._activate_app_on_mac()
+        QTimer.singleShot(0, lambda: self._raise_settings_dialog(settings_dialog))
         settings_dialog.exec()
+
+    def _raise_settings_dialog(self, settings_dialog):
+        settings_dialog.raise_()
+        settings_dialog.activateWindow()
+
+    def _activate_app_on_mac(self):
+        try:
+            from AppKit import NSApplication
+
+            NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
+        except Exception:
+            pass
