@@ -47,6 +47,15 @@ def request_screen_recording_access():
         pass
 
 
+def set_activation_policy_accessory():
+    try:
+        from AppKit import NSApplication, NSApplicationActivationPolicyAccessory
+
+        NSApplication.sharedApplication().setActivationPolicy_(NSApplicationActivationPolicyAccessory)
+    except Exception:
+        pass
+
+
 class SharedState:
     def __init__(self):
         self.running = True
@@ -70,6 +79,7 @@ def run_gui():
     app.setApplicationDisplayName(APP_NAME)
     app.setQuitOnLastWindowClosed(False)
     set_app_icon(app)
+    set_activation_policy_accessory()
     request_screen_recording_access()
 
     input_loop = InputLoop(shared_state)

@@ -1,6 +1,8 @@
 # meikikai/gui/popup.py
 import logging
+import os
 import threading
+from ctypes import c_void_p
 from typing import List, Optional
 
 from PyQt6.QtCore import QTimer, QPoint, QSize
@@ -13,10 +15,25 @@ from meikikai.dictionary.lookup import DictionaryEntry, KanjiEntry
 from meikikai.gui.input import toggle_macos_play_pause_key
 
 try:
-    from AppKit import NSApplicationActivateAllWindows, NSWorkspace
+    import objc
+    from AppKit import (
+        NSApplicationActivateIgnoringOtherApps,
+        NSMainMenuWindowLevel,
+        NSWorkspace,
+        NSWindowCollectionBehaviorCanJoinAllSpaces,
+        NSWindowCollectionBehaviorFullScreenAuxiliary,
+        NSWindowCollectionBehaviorIgnoresCycle,
+        NSWindowCollectionBehaviorTransient,
+    )
 except ImportError:
-    NSApplicationActivateAllWindows = None
+    objc = None
+    NSApplicationActivateIgnoringOtherApps = None
+    NSMainMenuWindowLevel = None
     NSWorkspace = None
+    NSWindowCollectionBehaviorCanJoinAllSpaces = None
+    NSWindowCollectionBehaviorFullScreenAuxiliary = None
+    NSWindowCollectionBehaviorIgnoresCycle = None
+    NSWindowCollectionBehaviorTransient = None
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +44,7 @@ class Popup(QWidget):
         self._latest_data = None
         self._last_latest_data = None
         self._data_lock = threading.Lock()
-        self._previous_active_window_on_mac = None
+        self._previous_active_app_on_mac = None
         self._auto_pause_media_triggered = False
 
         self.shared_state = shared_state
@@ -48,9 +65,14 @@ class Popup(QWidget):
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool
+            Qt.WindowType.Tool |
+            Qt.WindowType.WindowDoesNotAcceptFocus
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        mac_always_show_tool_window = getattr(Qt.WidgetAttribute, "WA_MacAlwaysShowToolWindow", None)
+        if mac_always_show_tool_window is not None:
+            self.setAttribute(mac_always_show_tool_window)
         self.setStyleSheet("background: transparent;")
 
         main_layout = QVBoxLayout(self)
@@ -69,6 +91,7 @@ class Popup(QWidget):
         self.content_layout.addWidget(self.display_label)
 
         self.hide()
+        self._configure_macos_window()
 
     def _apply_frame_stylesheet(self):
         bg_color = QColor(config.color_background)
@@ -168,13 +191,13 @@ class Popup(QWidget):
             self.setFixedSize(new_size)
         self._last_latest_data = latest_data
 
+        mouse_pos = QCursor.pos()
+        self.move_to(mouse_pos.x(), mouse_pos.y())
+
         if self._latest_data and config.is_enabled:
             self.show_popup()
         else:
             self.hide_popup()
-
-        mouse_pos = QCursor.pos()
-        self.move_to(mouse_pos.x(), mouse_pos.y())
 
     def _render_kanji_entry(self, entry: KanjiEntry):
         # Colors and sizes from config
@@ -414,7 +437,7 @@ class Popup(QWidget):
         self.is_visible = False
         self._resume_auto_paused_media()
         QTimer.singleShot(50, lambda: self._release_lock_safely())  # prevent popup from being screenshotted
-        self._restore_focus_on_mac()
+        QTimer.singleShot(0, self._restore_focus_on_mac)
 
     def _release_lock_safely(self):
         logger.debug("hide_popup releasing lock...")
@@ -425,15 +448,20 @@ class Popup(QWidget):
         # logger.debug(f"show_popup triggered while visibility:{self.is_visible}")
         if self.is_visible:
             return
+
+        self._store_active_app_on_mac()
+        self._configure_macos_window()
+
         logger.debug("show_popup acquiring lock...")
         self.shared_state.screen_lock.acquire()
         logger.debug("...successfully acquired lock by show_popup")
 
-        self._store_active_window_on_mac()
         self._pause_media_for_popup()
         self.is_visible = True
         self.show()
         self.raise_()
+        self._configure_macos_window()
+        self._order_macos_window_front()
 
     def _pause_media_for_popup(self):
         if config.auto_pause_media and toggle_macos_play_pause_key():
@@ -448,34 +476,68 @@ class Popup(QWidget):
         finally:
             self._auto_pause_media_triggered = False
 
+    def _macos_window(self):
+        if not objc:
+            return None
+
+        ns_view = objc.objc_object(c_void_p=c_void_p(int(self.winId())))
+        return ns_view.window()
+
+    def _configure_macos_window(self):
+        try:
+            ns_window = self._macos_window()
+            if not ns_window:
+                return
+
+            collection_behavior = (
+                NSWindowCollectionBehaviorCanJoinAllSpaces |
+                NSWindowCollectionBehaviorFullScreenAuxiliary |
+                NSWindowCollectionBehaviorTransient |
+                NSWindowCollectionBehaviorIgnoresCycle
+            )
+            ns_window.setCollectionBehavior_(collection_behavior)
+            ns_window.setLevel_(NSMainMenuWindowLevel)
+            ns_window.setCanHide_(False)
+            ns_window.setHidesOnDeactivate_(False)
+        except Exception as e:
+            logger.warning(f"Failed to configure macOS popup window: {e}")
+
+    def _order_macos_window_front(self):
+        try:
+            ns_window = self._macos_window()
+            if ns_window:
+                ns_window.orderFrontRegardless()
+        except Exception as e:
+            logger.warning(f"Failed to order macOS popup window front: {e}")
+
+    def _store_active_app_on_mac(self):
+        if not NSWorkspace:
+            return
+
+        try:
+            active_app = NSWorkspace.sharedWorkspace().frontmostApplication()
+            if active_app and active_app.processIdentifier() != os.getpid():
+                self._previous_active_app_on_mac = active_app
+            else:
+                self._previous_active_app_on_mac = None
+        except Exception as e:
+            logger.warning(f"Failed to store active app: {e}")
+            self._previous_active_app_on_mac = None
+
+    def _restore_focus_on_mac(self):
+        if not NSApplicationActivateIgnoringOtherApps or not self._previous_active_app_on_mac:
+            return
+
+        try:
+            self._previous_active_app_on_mac.activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
+        except Exception as e:
+            logger.warning(f"Failed to restore focus: {e}")
+        finally:
+            self._previous_active_app_on_mac = None
+
     def reapply_settings(self):
         logger.debug("Popup: Re-applying settings and triggering font recalibration.")
         self._apply_frame_stylesheet()
         # By setting is_calibrated to False, the main loop will automatically
         # run _calibrate_empirically() again with the new font settings.
         self.is_calibrated = False
-
-    def _store_active_window_on_mac(self):
-        """Store the currently active application for focus restoration."""
-        if not NSWorkspace:
-            return
-
-        try:
-            active_app = NSWorkspace.sharedWorkspace().frontmostApplication()
-            if active_app:
-                self._previous_active_window_on_mac = active_app
-        except Exception as e:
-            logger.warning(f"Failed to store active window: {e}")
-            self._previous_active_window_on_mac = None
-
-    def _restore_focus_on_mac(self):
-        """Restore focus to the previously active application."""
-        if not NSApplicationActivateAllWindows or not self._previous_active_window_on_mac:
-            return
-
-        try:
-            self._previous_active_window_on_mac.activateWithOptions_(NSApplicationActivateAllWindows)
-        except Exception as e:
-            logger.warning(f"Failed to restore focus: {e}")
-        finally:
-            self._previous_active_window_on_mac = None

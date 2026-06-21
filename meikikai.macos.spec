@@ -101,7 +101,7 @@ app = BUNDLE(
         'CFBundleName': 'MeikiKai',
         'CFBundleDisplayName': 'MeikiKai',
         'CFBundleVersion': BUILD_VERSION,
+        'LSUIElement': True,
         'NSScreenCaptureUsageDescription': 'MeikiKai needs Screen Recording access to OCR Japanese text visible on your screen.',
-        'NSAppleEventsUsageDescription': 'MeikiKai restores focus to the previously active app after showing a popup.',
     },
 )
