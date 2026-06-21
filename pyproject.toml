@@ -3,13 +3,13 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "meikipop"
+name = "meikikai"
 version = "2.0.4"
 description = "Japanese OCR popup dictionary for macOS"
 readme = "README.md"
 license = "GPL-3.0"
 authors = [
-    {name = "rtr46"}
+    {name = "hectahertz"}
 ]
 requires-python = ">=3.10"
 dependencies = [
@@ -31,19 +31,19 @@ classifiers = [
 ]
 
 [project.scripts]
-meikipop = "meikipop.main:main"
+meikikai = "meikikai.main:main"
 
-[project.entry-points."meikipop.scripts"]
-build-dict = "meikipop.scripts.build_dictionary:main"
-import-yomitan-dict-html = "meikipop.scripts.import_yomitan_dict_html:main"
-import-yomitan-dict-text = "meikipop.scripts.import_yomitan_dict_text:main"
+[project.entry-points."meikikai.scripts"]
+build-dict = "meikikai.scripts.build_dictionary:main"
+import-yomitan-dict-html = "meikikai.scripts.import_yomitan_dict_html:main"
+import-yomitan-dict-text = "meikikai.scripts.import_yomitan_dict_text:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["meikipop*"]
+include = ["meikikai*"]
 
 [tool.setuptools.package-data]
-meikipop = [
+meikikai = [
     "scripts/deconjugator.json",
     "resources/app_icon.icns",
     "resources/menubar_icon.png",

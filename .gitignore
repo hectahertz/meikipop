@@ -24,7 +24,7 @@ dictionary.pkl
 # MacOS things
 .DS_Store
 
-src/meikipop.egg-info/
+src/meikikai.egg-info/
 
 # Flatpak
 bundle-repo

@@ -1,138 +1,144 @@
-# meikipop - japanese ocr popup dictionary for macos
+# MeikiKai
 
-instantly look up japanese words anywhere on your mac. meikipop uses optical character recognition (ocr) to read text from websites, games, scanned manga, or even hard-coded video subtitles, giving you effortless dictionary lookups with the press of a key (or even without)!
+MeikiKai is a macOS Japanese OCR popup dictionary. It watches a selected part of your screen, reads visible Japanese text with OCR, and shows dictionary entries when you hover text with your chosen hotkey.
 
-https://github.com/user-attachments/assets/a1834197-3059-438c-a2dc-716e8ec9078f
+This project is a fork of [rtr46/meikipop](https://github.com/rtr46/meikipop). Thank you to rtr46 and the MeikiPop contributors for the original app, dictionary pipeline, OCR architecture, and overall reading workflow this fork builds on.
 
+## What changed in this fork
 
+MeikiKai renames the app, Python package, CLI, support files, and build artifacts around the new name, while narrowing the app experience around macOS:
 
-## features
+- Renamed the desktop app, package, and command to **MeikiKai** / `meikikai`.
+- macOS-only runtime, packaging, paths, permissions, and input handling.
+- Removed Windows, Linux, Wayland, Flatpak, Magpie, and Chrome Screen AI support.
+- Added separate app and menu bar icons, including an inactive icon when paused.
+- Moved the enable/pause toggle into the menu bar menu as the first item.
+- Added optional media auto-pause while the popup is open.
 
-*   **works everywhere:** if you can see it on your screen, you can look it up. no more limitations of browser extensions, hooks or application-specific tools.
-*   **ocr-powered:** reads japanese text directly from images, making it perfect for games, comics, and videos.
-*   **blazingly fast:** the dictionary is pre-processed into a highly optimized format for instant lookups. the ui is designed to be lightweight and responsive.
-*   **simple & intuitive:** just point your mouse and press a hotkey. that's it.
-*   **highly customizable:** change the hotkey, theme, colors, and layout to create your perfect reading experience.
-*   **region or fullscreen:** scan your entire screen or select a specific region (like a game window or manga page) to improve performance.
-*   **pluggable ocr backend:** lets you choose whatever ocr suits you best. whether you want the highest accuracy remote ocr, that runs great even on low-end hardware or you want blazingly fast and private local ocr.
+## Features
 
-## philosophy & limitations
+- **Screen-wide lookup:** works with games, manga, videos, PDFs, websites, and other apps because it reads pixels from the screen.
+- **Region or screen scanning:** OCR a custom region or a full display.
+- **Auto and manual scan modes:** keep OCR results warm in the background, or scan only when pressing the hotkey.
+- **Hover popup:** dictionary entries appear next to the cursor, with configurable positioning including a visual-novel-friendly mode.
+- **Local and remote OCR providers:** use fast local `meikiocr`, Google Lens, or a local `owocr` websocket server.
+- **JMdict/KANJIDIC dictionary:** includes word lookup, deconjugation, frequency ranking, kanji entries, components, and examples.
+- **Yomitan imports:** replace the bundled dictionary with one or more Yomitan/Yomichan dictionaries.
+- **Customizable appearance:** themes, colors, opacity, font, compact mode, visible fields, and kanji display options.
 
-meikipop is designed to do one thing and do it exceptionally well: provide fast, frictionless, on-screen dictionary lookups.
+## Requirements
 
-it is heavily inspired by the philosophy of [Nazeka](https://github.com/wareya/nazeka), a fantastic browser-based popup dictionary, and aims to bring that seamless experience to the entire desktop. it also draws inspiration from the ocr architecture of [owocr](https://github.com/AuroraWright/owocr/tree/master/owocr).
+- macOS
+- Python 3.10 or newer if running from source
+- macOS permissions for the app or terminal you use to run it:
+  - **Screen Recording**
+  - **Accessibility**
+  - **Input Monitoring**
 
-to maintain this focus, there are a few things meikipop is **not**:
+MeikiKai stores user data in:
 
-*   **it is not an srs-mining tool.** meikipop does not include functionality to automatically create flashcards for programs like anki.
-*   **it is not a multi-dictionary tool.** while meikipops lets you import yomitan dictionaries, it is designed to run best with a single, semi-custom jmdict+kanjidic dictionary. 
+- `~/Library/Application Support/meikikai/config.ini`
+- `~/Library/Application Support/meikikai/dictionary.pkl`
+- `~/Library/Caches/meikikai/`
 
-## installation
+## Install
 
-there are a few different ways to install and run meikipop. note that when meikipop is started for the first time, a dictionary and ocr models may be downloaded.
+### macOS app bundle
 
-### easiest: prepackaged binaries
+Download the latest release from this fork:
 
-just download, unpack and start the executable binary. no python installation required:
-* https://github.com/rtr46/meikipop/releases/latest
+- <https://github.com/hectahertz/meikipop/releases/latest>
 
-### recommended: install via pypi
+Unpack it, start `MeikiKai.app`, then grant the macOS permissions listed above when prompted or from System Settings.
 
-if you already have python 3.10+ installed, this is the most flexible option that lets you run directly from source, enables you to edit the program and lets you add your own custom ocr providers. 
-
-```bash
-#... activate your environment if any
-pip install --upgrade meikipop
-meikipop  # run the application
-```
-
-### for development: editable install
-
-if you are planning to modify, fork or contribute to meikipop, it is best to checkout this repo and create an editable install
-
-```bash
-#... activate your environment if any
-git clone https://github.com/rtr46/meikipop.git
-cd meikipop
-pip install -e .
-meikipop  # run the application
-```
-
-### platform support
-
-meikipop is macOS-only.
-
-macOS permissions required on first run:
-
-* go to **System Settings** > **Privacy & Security**
-* add/enable your terminal app or MeikiKai in **Input Monitoring**, **Screen Recording** and **Accessibility**
-
-note that there may be problems when using python 3.14. use one of [these workarounds](https://github.com/rtr46/meikipop/issues/43) if necessary.
-
-## how to use
-
-1.  run the application (`meikipop`).
-2.  the first time you run the app in `region` mode, you will be prompted to select an area of your screen to scan.
-3.  move your mouse over any japanese text on your screen.
-4.  a popup with dictionary entries will appear.
-5.  **right-click the menu bar icon** to open the settings, reselect the scan region, change the ocr provider or quit the application.
-
-## configuration
-
-you can fully customize meikipop's behavior and appearance. right-click the menu bar icon and choose "settings" to open the configuration gui.
-
-changes are saved to `~/Library/Application Support/meikipop/`, which contains `config.ini` and `dictionary.pkl`.
-
-## using alternative ocr backends...
-
-meikipop's architecture allows you to choose whatever ocr suits your use case best:
-- meikiocr (default/local): possibly the fastest local ocr worth using on cpu and can run even faster on nvidia gpus. primarily designed for video games with horizontal text. poor accuracy for vertical text.
-- google lens (remote): high accuracy, but requires an internet connection and has higher latency then the local options.
-- owocr: owocr lets you choose from even more ocr backends (see below)
-- custom ocr provider: if you are running from source it is very simple to integrate any ocr provider on your own (see below) 
-
-### ...via owocr provider
-
-owocr lets you run any relevant ocr engine and lets meikipop use it. just run a local [owocr](https://github.com/AuroraWright/owocr/tree/master/owocr) instance and select the owocr ocr provider from meikipop's menu bar menu.
-
-make sure you:
-
-* use owocr 1.15.0 or newer
-* enable reading from and writing to websockets
-* choose the json output format
-* and use an ocr backend that supports coordinates (most do)
-    ```bash
-    pip install -U "owocr>=1.15"
-    owocr -r websocket -w websocket -of json -e glens # replace glens with your favorite owocr backend
-    ```
-
-### ...via custom ocr provider
-
-you can develop your own ocr provider. to get started, you can copy the `dummy` provider and use it as a template.
-
-for a complete guide, see: [how to create a custom ocr provider](docs/CUSTOM_OCR_PROVIDER.md)
-
-## building your own dictionary (optional)
-
-in case you want to update your dictionary you can simply run:
+### Development setup
 
 ```bash
-meikipop build-dict
+git clone https://github.com/hectahertz/meikipop.git meikikai
+cd meikikai
+python -m pip install -e .
+meikikai
 ```
 
-if you want to import a yomitan dictionary that is possible as well. you can import multiple yomitan dictionaries at once, but be aware that this will overwrite your default dictionary:
+## Usage
+
+1. Start MeikiKai with `MeikiKai.app` or `meikikai`.
+2. If the scan area is set to **Custom Region**, select the area of the screen to OCR.
+3. Move the mouse over Japanese text.
+4. Hold the configured hotkey when required. The default hotkey is `shift`.
+5. Right-click the menu bar icon to enable/pause MeikiKai, open settings, change OCR provider, switch scan mode, choose scan area, or quit.
+
+In auto scan mode, MeikiKai can show lookups without holding the hotkey if **Show Popup without Hotkey** is enabled.
+
+## OCR providers
+
+### meikiocr (local)
+
+Fast local OCR, especially useful for horizontal Japanese game text. Models are handled by the `meikiocr` package. This is the default configured provider.
+
+### Google Lens (remote)
+
+High-accuracy remote OCR. It requires an internet connection and sends screenshots of the selected scan area to Google Lens. Enable Google Lens compression if latency is high on a slow connection.
+
+### owocr (Websocket)
+
+Use any OCR engine supported by [owocr](https://github.com/AuroraWright/owocr/tree/master/owocr) through a local websocket server.
 
 ```bash
-# try to keep as much of the dictionary's original formatting
-meikipop import-yomitan-dict-html my_yomitan_dict.zip
-# or create a compact, text only dictionary
-meikipop import-yomitan-dict-text my_yomitan_dict.zip
-# or import multiple dictionaries at once
-meikipop import-yomitan-dict-text dict1.zip dict2.zip
+pip install -U "owocr>=1.15"
+owocr -r websocket -w websocket -of json -e glens
 ```
 
-## license
+Then choose **owocr (Websocket)** from the menu bar OCR provider menu or settings dialog.
 
-meikipop is licensed under the GNU General Public License v3.0. see the `LICENSE` file for the full license text.
+### Custom providers
 
+Custom OCR providers can be added when running from source. See [docs/CUSTOM_OCR_PROVIDER.md](docs/CUSTOM_OCR_PROVIDER.md).
 
+## Dictionary commands
+
+MeikiKai downloads the default dictionary on first run if `dictionary.pkl` is missing. To rebuild it from source data:
+
+```bash
+meikikai build-dict
+```
+
+To replace it with Yomitan/Yomichan dictionaries:
+
+```bash
+# Preserve supported structured HTML formatting
+meikikai import-yomitan-dict-html dict.zip
+
+# Import compact plain-text definitions
+meikikai import-yomitan-dict-text dict.zip
+
+# Merge multiple dictionaries into one dictionary.pkl
+meikikai import-yomitan-dict-text dict1.zip dict2.zip
+```
+
+Imports overwrite `~/Library/Application Support/meikikai/dictionary.pkl`.
+
+## Settings
+
+Open settings from the menu bar icon. Useful options include:
+
+- hotkey and maximum lookup length
+- OCR provider and Google Lens compression
+- auto scan mode, scan interval, scan-on-mouse-move, and hotkeyless lookup
+- popup position mode, compact mode, and media auto-pause
+- visible dictionary fields: glosses, deconjugation, part of speech, tags, frequency, kanji entries, examples, and components
+- theme, opacity, font, font sizes, and colors
+
+## Building the macOS app
+
+This fork keeps a PyInstaller spec for the macOS bundle:
+
+```bash
+pyinstaller meikikai.macos.spec
+```
+
+The generated bundle is named `MeikiKai.app`.
+
+## License
+
+MeikiKai inherits MeikiPop's GNU General Public License v3.0 license. See [LICENSE](LICENSE).

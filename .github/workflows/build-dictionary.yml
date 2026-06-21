@@ -26,11 +26,11 @@ jobs:
           pip install -e .
 
       - name: build dictionary
-        run: python -m meikipop.scripts.build_dictionary
+        run: python -m meikikai.scripts.build_dictionary
 
       - name: compress dictionary
         run: |
-          mv "$HOME/Library/Application Support/meikipop/dictionary.pkl" .
+          mv "$HOME/Library/Application Support/meikikai/dictionary.pkl" .
           zip dictionary.zip dictionary.pkl
 
       - name: update dictionary-latest release
@@ -40,6 +40,6 @@ jobs:
           gh release delete dictionary-latest --yes --cleanup-tag || true
           gh release create dictionary-latest \
             --title "dictionary (latest)" \
-            --notes "most recent meikipop dictionary file" \
+            --notes "most recent MeikiKai dictionary file" \
             --prerelease \
             dictionary.zip
