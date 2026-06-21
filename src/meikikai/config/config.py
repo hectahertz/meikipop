@@ -3,12 +3,13 @@ import configparser
 import logging
 import sys
 
+from meikikai._version import __version__
 from meikikai.utils.paths import paths
 
 logger = logging.getLogger(__name__)
 
 APP_NAME = "MeikiKai"
-APP_VERSION = "1.0.1"
+APP_VERSION = __version__
 MAX_DICT_ENTRIES = 10
 MIN_AUTO_SCAN_INTERVAL_SECONDS = 0.1
 IS_MACOS = sys.platform == 'darwin'

@@ -7,8 +7,8 @@ from PyInstaller.config import CONF
 
 
 def _get_build_version() -> str:
-    config_path = Path(CONF['specpath']) / 'src' / 'meikikai' / 'config' / 'config.py'
-    match = re.search(r'^APP_VERSION\s*=\s*["\']([^"\']+)["\']', config_path.read_text(encoding='utf-8'), re.M)
+    version_path = Path(CONF['specpath']) / 'src' / 'meikikai' / '_version.py'
+    match = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']', version_path.read_text(encoding='utf-8'), re.M)
     if not match:
         return '0.0.0'
 

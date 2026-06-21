@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "meikikai"
-version = "1.0.1"
+dynamic = ["version"]
 description = "Japanese OCR popup dictionary for macOS"
 readme = "README.md"
 license = "GPL-3.0"
@@ -35,6 +35,9 @@ meikikai = "meikikai.main:main"
 build-dict = "meikikai.scripts.build_dictionary:main"
 import-yomitan-dict-html = "meikikai.scripts.import_yomitan_dict_html:main"
 import-yomitan-dict-text = "meikikai.scripts.import_yomitan_dict_text:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "meikikai._version.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
