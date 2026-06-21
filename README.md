@@ -2,6 +2,8 @@
 
 MeikiKai is a macOS Japanese OCR popup dictionary. It watches a selected screen, reads visible Japanese text with OCR, and shows dictionary entries when you hover text.
 
+![MeikiKai popup example](https://github.com/user-attachments/assets/39b415d8-2ed9-4a57-8b96-e25c96a87bb1)
+
 This project is a fork of [rtr46/meikipop](https://github.com/rtr46/meikipop). Thank you to rtr46 and the MeikiPop contributors for the original app, dictionary pipeline, OCR architecture, and overall reading workflow this fork builds on.
 
 ## What changed in this fork
@@ -10,21 +12,25 @@ MeikiKai renames the app, Python package, CLI, support files, and build artifact
 
 - Renamed the desktop app, package, and command to **MeikiKai** / `meikikai`.
 - macOS-only runtime, packaging, paths, permissions, and input handling.
-- Removed Windows, Linux, Wayland, Flatpak, Magpie, and Chrome Screen AI support.
+- Streamlined the app around a focused macOS-only reading workflow.
+- Simplified lookup to always-on OCR over a selected display or all displays.
+- Redesigned the lookup popup around a fixed-width dark layout with vocab summaries, deconjugation, kanji cards, examples, and omission counts.
+- Refined the settings dialog into focused Lookup, Scanning, and Popup sections.
 - Added separate app and menu bar icons, including an inactive icon when paused.
-- Moved the enable/pause toggle into the menu bar menu as the first item.
-- Added optional media auto-pause while the popup is open.
+- Moved enable/pause and media auto-pause controls into the menu bar menu.
+- Added optional media auto-pause while the popup is open, with macOS Accessibility permission checks.
 
 ## Features
 
 - **Screen-wide lookup:** works with games, manga, videos, PDFs, websites, and other apps because it reads pixels from the selected screen.
-- **Display selection:** OCR a full display or all displays.
+- **Display selection:** OCR one full display or all displays from the menu bar.
 - **Always-on auto scan:** keeps OCR results warm in the background for responsive hover lookups.
-- **Hover popup:** dictionary entries appear next to the cursor in a compact bundled-data layout, with configurable positioning including a visual-novel-friendly mode.
+- **Hover popup:** dictionary entries appear next to the cursor in a fixed-width dark popup, with configurable placement including a visual-novel-friendly mode.
+- **Bundled dictionary details:** shows word lookup, deconjugation, frequency ranking, POS/tags, glosses, kanji readings, examples, and components without popup content toggles.
 - **Local OCR:** uses fast local `meikiocr` for Japanese text recognition.
 - **JMdict/KANJIDIC dictionary:** includes word lookup, deconjugation, frequency ranking, kanji entries, components, and examples.
 - **Yomitan imports:** replace the bundled dictionary with one or more Yomitan/Yomichan dictionaries.
-- **Bundled dictionary details:** word lookup, deconjugation, frequency ranking, POS/tags, glosses, kanji readings, examples, and components are shown without popup content toggles.
+- **macOS integration:** popup windows stay visible across Spaces, settings are raised to the foreground, and media auto-pause uses the macOS Play/Pause key when enabled.
 
 ## Requirements
 
@@ -35,11 +41,12 @@ MeikiKai renames the app, Python package, CLI, support files, and build artifact
   - **Accessibility**
   - **Input Monitoring**
 
-MeikiKai stores user data in:
+MeikiKai stores user data and logs in:
 
 - `~/Library/Application Support/meikikai/config.ini`
 - `~/Library/Application Support/meikikai/dictionary.pkl`
 - `~/Library/Caches/meikikai/`
+- `~/Library/Logs/MeikiKai/meikikai.log`
 
 ## Install
 
@@ -47,14 +54,14 @@ MeikiKai stores user data in:
 
 Download the latest release from this fork:
 
-- <https://github.com/hectahertz/meikipop/releases/latest>
+- <https://github.com/hectahertz/meikikai/releases/latest>
 
 Unpack it, start `MeikiKai.app`, then grant the macOS permissions listed above when prompted or from System Settings.
 
 ### Development setup
 
 ```bash
-git clone https://github.com/hectahertz/meikipop.git meikikai
+git clone https://github.com/hectahertz/meikikai.git meikikai
 cd meikikai
 python -m pip install -e .
 meikikai
@@ -64,7 +71,7 @@ meikikai
 
 1. Start MeikiKai with `MeikiKai.app` or `meikikai`.
 2. Move the mouse over Japanese text on the selected screen.
-3. Right-click the menu bar icon to enable/pause MeikiKai, open settings, choose scan screen, or quit.
+3. Right-click the menu bar icon to enable/pause MeikiKai, toggle media auto-pause, open settings, choose scan screen, or quit.
 
 ## OCR
 
@@ -72,7 +79,7 @@ MeikiKai uses local `meikiocr` for Japanese text recognition. It is optimized fo
 
 ## Dictionary commands
 
-MeikiKai downloads the default dictionary on first run if `dictionary.pkl` is missing. To rebuild it from source data:
+MeikiKai downloads the default dictionary on first run if `dictionary.pkl` is missing. If an old MeikiPop dictionary exists, MeikiKai migrates it into the new app support directory before downloading a fresh copy. To rebuild the dictionary from source data:
 
 ```bash
 meikikai build-dict
@@ -97,8 +104,19 @@ Imports overwrite `~/Library/Application Support/meikikai/dictionary.pkl`.
 
 Open settings from the menu bar icon. Useful options include:
 
-- maximum lookup length and scan interval
-- popup position mode and media auto-pause
+- maximum lookup length
+- OCR scan cooldown
+- popup placement mode
+
+Media auto-pause is toggled directly from the menu bar menu.
+
+## Popup sample
+
+Regenerate the popup image used above with:
+
+```bash
+.venv/bin/python scripts/render_popup_sample.py mockup -o /tmp/meikikai_popup_mockup.png
+```
 
 ## Building the macOS app
 
