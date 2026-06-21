@@ -1,6 +1,8 @@
 # meikikai/utils/logger.py
 import logging
 import sys
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 from meikikai.config.config import APP_NAME
 
@@ -21,12 +23,23 @@ def setup_logging():
         datefmt='%H:%M:%S'
     )
 
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(log_formatter)
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(log_formatter)
+
+    log_dir = Path.home() / "Library" / "Logs" / APP_NAME
+    log_dir.mkdir(parents=True, exist_ok=True)
+    file_handler = RotatingFileHandler(
+        log_dir / "meikikai.log",
+        maxBytes=1_000_000,
+        backupCount=3,
+        encoding="utf-8",
+    )
+    file_handler.setFormatter(log_formatter)
 
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)  # logging.INFO or TRACE_LEVEL_NUM
 
     if logger.hasHandlers():
         logger.handlers.clear()
-    logger.addHandler(handler)
+    logger.addHandler(stream_handler)
+    logger.addHandler(file_handler)

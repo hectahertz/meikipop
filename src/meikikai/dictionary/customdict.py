@@ -1,17 +1,23 @@
 # customdict.py
 import logging
 import pickle
+import shutil
 import time
 import urllib.request
 import zipfile
 import io
 from collections import defaultdict
+from pathlib import Path
 
 from meikikai.utils.paths import paths
 
 logger = logging.getLogger(__name__)
 
-DICT_URL = "https://github.com/hectahertz/meikipop/releases/download/dictionary-latest/dictionary.zip"
+DICT_URLS = (
+    "https://github.com/hectahertz/meikikai/releases/download/dictionary-latest/dictionary.zip",
+    "https://github.com/rtr46/meikipop/releases/download/dictionary-latest/dictionary.zip",
+)
+LEGACY_DICT_PATH = Path.home() / "Library" / "Application Support" / "meikipop" / "dictionary.pkl"
 
 DEFAULT_FREQ = 999_999
 
@@ -59,6 +65,9 @@ class Dictionary:
             self._validate()
             return True
         except FileNotFoundError:
+            if self._migrate_legacy_dictionary(file_path):
+                return self.load_dictionary(file_path)  # retry once after migration
+
             logger.warning(f"Dictionary file not found. Trying download...")
             if self._download_dictionary():
                 return self.load_dictionary(file_path)  # retry once after download
@@ -71,18 +80,33 @@ class Dictionary:
             logger.error(f"Failed to load dictionary: {e}")
             return False
 
-    def _download_dictionary(self) -> bool:
-        try:
-            with urllib.request.urlopen(DICT_URL) as response:
-                data = response.read()
-            with zipfile.ZipFile(io.BytesIO(data)) as zf:
-                zf.extract("dictionary.pkl", path=paths.data_dir)
-            logger.info("Dictionary downloaded successfully.")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to download dictionary: {e}")
+    def _migrate_legacy_dictionary(self, file_path: str) -> bool:
+        target_path = Path(file_path)
+        if target_path.exists() or not LEGACY_DICT_PATH.exists():
             return False
 
+        try:
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(LEGACY_DICT_PATH, target_path)
+            logger.info(f"Migrated dictionary from legacy path '{LEGACY_DICT_PATH}'.")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to migrate legacy dictionary: {e}")
+            return False
+
+    def _download_dictionary(self) -> bool:
+        for url in DICT_URLS:
+            try:
+                logger.info(f"Downloading dictionary from {url}")
+                with urllib.request.urlopen(url) as response:
+                    data = response.read()
+                with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                    zf.extract("dictionary.pkl", path=paths.data_dir)
+                logger.info("Dictionary downloaded successfully.")
+                return True
+            except Exception as e:
+                logger.error(f"Failed to download dictionary from {url}: {e}")
+        return False
 
     def _validate(self):
         """
