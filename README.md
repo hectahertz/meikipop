@@ -138,6 +138,14 @@ pyinstaller meikikai.macos.spec
 
 The generated bundle is named `MeikiKai.app`.
 
+For local development, this script builds, optionally signs from `.env`, installs to `/Applications`, and opens the installed app:
+
+```bash
+cp .env.example .env
+# Edit MEIKIKAI_CODESIGN_IDENTITY in .env, or leave it unset for ad-hoc signing.
+scripts/build_install_macos.sh
+```
+
 ## License
 
 MeikiKai inherits MeikiPop's GNU General Public License v3.0 license. See [LICENSE](LICENSE).
