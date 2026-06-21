@@ -1,7 +1,7 @@
 # meikipop/gui/tray.py
 import os
 
-from PyQt6.QtGui import QIcon, QAction, QActionGroup
+from PyQt6.QtGui import QIcon, QAction, QActionGroup, QCursor
 from PyQt6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
 
 from meikipop.config.config import APP_NAME, config, IS_WINDOWS
@@ -96,9 +96,10 @@ class TrayIcon(QSystemTrayIcon):
 
         self.menu.addSeparator()
 
-        self.enable_action = self.menu.addAction(f"Pause {APP_NAME}")
+        self.enable_action = self.menu.addAction(f"{APP_NAME} Enabled")
         self.enable_action.setCheckable(True)
-        self.enable_action.triggered.connect(self.toggle_enabled_state)
+        self.enable_action.triggered.connect(self.set_enabled_state)
+        self.set_enabled_state(config.is_enabled)
         self.activated.connect(self.on_tray_activated)
 
         self.menu.addSeparator()
@@ -113,16 +114,16 @@ class TrayIcon(QSystemTrayIcon):
         self.show()
 
     def on_tray_activated(self, reason):
-        """Handles clicks on the tray icon."""
+        """Shows the tray menu when the tray icon is clicked."""
         # QSystemTrayIcon.ActivationReason.Trigger is the enum for a normal left-click.
         if reason == self.ActivationReason.Trigger:
-            self.toggle_enabled_state()
+            self.menu.popup(QCursor.pos())
 
-    def toggle_enabled_state(self):
-        """Toggles the enabled/paused state of the application."""
-        self.enable_action.setChecked(config.is_enabled)
-        config.is_enabled = not config.is_enabled
-        if config.is_enabled:
+    def set_enabled_state(self, enabled):
+        """Sets the enabled/paused state of the application."""
+        config.is_enabled = enabled
+        self.enable_action.setChecked(enabled)
+        if enabled:
             # App is active/unpaused
             self.setIcon(self.icon)
         else:
