@@ -1,17 +1,17 @@
-# .github/workflows/build-dictionary.yml
-name: reusable dictionary build
+name: dictionary build
 
 on:
   schedule:
-    - cron: '0 7 * * 1'  # Every Monday at 7:00 AM UTC
-  workflow_dispatch: # Also allow manual trigger
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
 
 permissions:
-  contents: write # Needed to create/update the release
+  contents: write
 
 jobs:
   build-dictionary:
     runs-on: macos-14
+
     steps:
       - uses: actions/checkout@v4
 
@@ -31,15 +31,15 @@ jobs:
       - name: compress dictionary
         run: |
           mv "$HOME/Library/Application Support/meikikai/dictionary.pkl" .
-          zip dictionary.zip dictionary.pkl
+          zip meikikai-dictionary.zip dictionary.pkl
 
-      - name: update dictionary-latest release
+      - name: update latest dictionary release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete dictionary-latest --yes --cleanup-tag || true
-          gh release create dictionary-latest \
-            --title "dictionary (latest)" \
-            --notes "most recent MeikiKai dictionary file" \
+          gh release delete meikikai-dictionary-latest --yes --cleanup-tag || true
+          gh release create meikikai-dictionary-latest \
+            --title "MeikiKai dictionary latest" \
+            --notes "Latest MeikiKai default dictionary." \
             --prerelease \
-            dictionary.zip
+            meikikai-dictionary.zip

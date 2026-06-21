@@ -1,17 +1,16 @@
-# .github/workflows/release.yaml
 name: Release
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'meikikai-v*'
 
 jobs:
   build-macos:
     uses: ./.github/workflows/build-macos.yml
 
   release:
-    needs: [ build-macos ]
+    needs: [build-macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -20,6 +19,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts/
+
       - name: create release
         uses: softprops/action-gh-release@v2
         with:
@@ -27,5 +27,4 @@ jobs:
           name: MeikiKai ${{ github.ref_name }}
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-rc') }}
-          files: |
-            artifacts/*/*.dmg
+          files: artifacts/*/*.dmg

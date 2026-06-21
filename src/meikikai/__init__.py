@@ -1,5 +1,5 @@
 """MeikiKai - Japanese OCR popup dictionary for macOS"""
 
-__version__ = "2.0.4"
+__version__ = "1.0.0"
 __author__ = "hectahertz"
 __license__ = "GPL-3.0"

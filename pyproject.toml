@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "meikikai"
-version = "2.0.4"
+version = "1.0.0"
 description = "Japanese OCR popup dictionary for macOS"
 readme = "README.md"
 license = "GPL-3.0"

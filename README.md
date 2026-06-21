@@ -63,7 +63,7 @@ meikikai
 
 ## Dictionary commands
 
-MeikiKai downloads the default dictionary on first run and migrates an old MeikiPop dictionary if found.
+MeikiKai downloads the default dictionary on first run if needed.
 
 ```bash
 # Rebuild the default dictionary

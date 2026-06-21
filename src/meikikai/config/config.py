@@ -8,7 +8,7 @@ from meikikai.utils.paths import paths
 logger = logging.getLogger(__name__)
 
 APP_NAME = "MeikiKai"
-APP_VERSION = "2.0.4"
+APP_VERSION = "1.0.0"
 MAX_DICT_ENTRIES = 10
 IS_MACOS = sys.platform == 'darwin'
 

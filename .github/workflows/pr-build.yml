@@ -1,4 +1,4 @@
-name: pre-release builds
+name: macos pull request build
 
 on:
   pull_request:

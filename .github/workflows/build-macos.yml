@@ -1,18 +1,11 @@
-name: reusable macos build
+name: macos build
 
 on:
   workflow_call:
 
 jobs:
   build-macos:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-14
-            arch: arm64
-
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-14
 
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +24,7 @@ jobs:
       - name: clean previous builds
         run: rm -rf build dist || true
 
-      - name: build with pyinstaller (macos)
+      - name: build app
         run: pyinstaller meikikai.macos.spec
 
       - name: create dmg
@@ -41,14 +34,14 @@ jobs:
           cp -R dist/MeikiKai.app dist/dmg-root/
           ln -s /Applications dist/dmg-root/Applications
           hdiutil create \
-            -volname "meikikai" \
+            -volname "MeikiKai" \
             -srcfolder dist/dmg-root \
             -ov \
             -format UDZO \
-            dist/meikikai.macos.${{ matrix.arch }}.dmg
+            dist/meikikai.macos.arm64.dmg
 
-      - name: upload macos artifact
+      - name: upload dmg
         uses: actions/upload-artifact@v4
         with:
-          name: meikikai-macos-${{ matrix.arch }}
-          path: dist/meikikai.macos.${{ matrix.arch }}.dmg
+          name: meikikai-macos-arm64
+          path: dist/meikikai.macos.arm64.dmg
