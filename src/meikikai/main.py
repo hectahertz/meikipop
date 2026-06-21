@@ -73,14 +73,14 @@ def run_gui():
     request_screen_recording_access()
 
     input_loop = InputLoop(shared_state)
-    popup_window = Popup(shared_state, input_loop)
+    popup_window = Popup(shared_state)
 
-    screen_manager = ScreenManager(shared_state, input_loop)
+    screen_manager = ScreenManager(shared_state)
     lookup = Lookup(shared_state, popup_window)  # load dictionary
 
     ocr_processor = OcrProcessor(shared_state)
     hit_scanner = HitScanner(shared_state, input_loop, screen_manager)
-    tray_icon = TrayIcon(screen_manager, ocr_processor, popup_window, input_loop, lookup)
+    tray_icon = TrayIcon(screen_manager, ocr_processor, popup_window, lookup)
 
     for t in [lookup, hit_scanner, ocr_processor, screen_manager, input_loop]:
         t.start()

@@ -1,6 +1,6 @@
 # MeikiKai
 
-MeikiKai is a macOS Japanese OCR popup dictionary. It watches a selected screen, reads visible Japanese text with OCR, and shows dictionary entries when you hover text with your chosen hotkey.
+MeikiKai is a macOS Japanese OCR popup dictionary. It watches a selected screen, reads visible Japanese text with OCR, and shows dictionary entries when you hover text.
 
 This project is a fork of [rtr46/meikipop](https://github.com/rtr46/meikipop). Thank you to rtr46 and the MeikiPop contributors for the original app, dictionary pipeline, OCR architecture, and overall reading workflow this fork builds on.
 
@@ -19,7 +19,7 @@ MeikiKai renames the app, Python package, CLI, support files, and build artifact
 
 - **Screen-wide lookup:** works with games, manga, videos, PDFs, websites, and other apps because it reads pixels from the selected screen.
 - **Display selection:** OCR a full display or all displays.
-- **Auto and manual scan modes:** keep OCR results warm in the background, or scan only when pressing the hotkey.
+- **Always-on auto scan:** keeps OCR results warm in the background for responsive hover lookups.
 - **Hover popup:** dictionary entries appear next to the cursor, with configurable positioning including a visual-novel-friendly mode.
 - **Local OCR:** uses fast local `meikiocr` for Japanese text recognition.
 - **JMdict/KANJIDIC dictionary:** includes word lookup, deconjugation, frequency ranking, kanji entries, components, and examples.
@@ -64,10 +64,7 @@ meikikai
 
 1. Start MeikiKai with `MeikiKai.app` or `meikikai`.
 2. Move the mouse over Japanese text on the selected screen.
-3. Hold the configured hotkey when required. The default hotkey is `shift`.
-4. Right-click the menu bar icon to enable/pause MeikiKai, open settings, switch scan mode, choose scan screen, or quit.
-
-In auto scan mode, MeikiKai can show lookups without holding the hotkey if **Show Popup without Hotkey** is enabled.
+3. Right-click the menu bar icon to enable/pause MeikiKai, open settings, choose scan screen, or quit.
 
 ## OCR
 
@@ -100,8 +97,7 @@ Imports overwrite `~/Library/Application Support/meikikai/dictionary.pkl`.
 
 Open settings from the menu bar icon. Useful options include:
 
-- hotkey and maximum lookup length
-- auto scan mode, scan interval, scan-on-mouse-move, and hotkeyless lookup
+- maximum lookup length and scan interval
 - popup position mode, compact mode, and media auto-pause
 - visible dictionary fields: glosses, deconjugation, part of speech, tags, frequency, kanji entries, examples, and components
 - theme, opacity, font, font sizes, and colors

@@ -5,7 +5,6 @@ import threading
 import time
 from typing import Optional
 
-from meikikai.config.config import config
 from meikikai.ocr.interface import OcrProvider
 from meikikai.ocr.providers.meikiocr import MeikiOcrProvider
 
@@ -39,7 +38,7 @@ class OcrProcessor(threading.Thread):
             except:
                 logger.exception("An unexpected error occurred in the ocr loop. Continuing...")
             finally:
-                if config.auto_scan_mode:
+                if self.shared_state.running:
                     self.shared_state.screenshot_trigger_event.set()
         logger.debug("OCR thread stopped.")
 

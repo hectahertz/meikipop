@@ -8,7 +8,6 @@ from PyQt6.QtWidgets import (QWidget, QDialog, QFormLayout, QComboBox,
 
 from meikikai.dictionary.lookup import Lookup
 from meikikai.config.config import config, APP_NAME
-from meikikai.gui.input import InputLoop
 from meikikai.gui.popup import Popup
 from meikikai.ocr.ocr import OcrProcessor
 from meikikai.utils.paths import paths
@@ -39,12 +38,10 @@ THEMES = {
 
 
 class SettingsDialog(QDialog):
-    def __init__(self, ocr_processor: OcrProcessor, popup_window: Popup, input_loop: InputLoop, lookup: Lookup,
-                 tray_icon, parent=None):
+    def __init__(self, ocr_processor: OcrProcessor, popup_window: Popup, lookup: Lookup, tray_icon, parent=None):
         super().__init__(parent)
         self.ocr_processor = ocr_processor
         self.popup_window = popup_window
-        self.input_loop = input_loop
         self.tray_icon = tray_icon
         self.lookup = lookup
 
@@ -72,18 +69,6 @@ class SettingsDialog(QDialog):
         core_layout = QFormLayout()
         self.form_layouts.append(core_layout)
 
-        self.hotkey_combo = QComboBox()
-        self.hotkey_combo.addItems([
-            'ctrl', 'shift', 'alt', 'cmd',
-            'ctrl+shift', 'ctrl+alt', 'shift+alt',
-            'cmd+shift', 'cmd+alt', 'cmd+ctrl',
-            'ctrl+shift+alt', 'cmd+ctrl+shift', 'cmd+ctrl+alt', 'cmd+shift+alt',
-            'cmd+ctrl+shift+alt'
-        ])
-        self.hotkey_combo.setCurrentText(config.hotkey)
-        self._set_expanding(self.hotkey_combo)
-        core_layout.addRow("Hotkey:", self.hotkey_combo)
-
         self.max_lookup_spin = QSpinBox()
         self.max_lookup_spin.setRange(5, 100)
         self.max_lookup_spin.setValue(config.max_lookup_length)
@@ -92,24 +77,10 @@ class SettingsDialog(QDialog):
         core_group.setLayout(core_layout)
         self.tab_general_layout.addWidget(core_group)
 
-        # --- Group 2: Auto Scan Mode ---
-        auto_group = QGroupBox("Auto Scan Mode")
-        auto_layout = QFormLayout()
-        self.form_layouts.append(auto_layout)
-
-        self.auto_scan_check = QCheckBox()
-        self.auto_scan_check.setChecked(config.auto_scan_mode)
-        self.auto_scan_check.setToolTip(
-            "Permanently OCR the selected screen\nImproves perceived latency, but worsens system load")
-        self.auto_scan_check.toggled.connect(self._update_auto_scan_state)
-        auto_layout.addRow("Enable Auto Scan:", self.auto_scan_check)
-
-        self.auto_scan_mouse_move_check_label = QLabel("Only Scan on Mouse Move:")
-        self.auto_scan_mouse_move_check = QCheckBox()
-        self.auto_scan_mouse_move_check.setChecked(config.auto_scan_on_mouse_move)
-        self.auto_scan_mouse_move_check.setToolTip(
-            "Prevents auto ocr to occur, if mouse is not moved\nCan reduce system load, but worsen perceived latency")
-        auto_layout.addRow(self.auto_scan_mouse_move_check_label, self.auto_scan_mouse_move_check)
+        # --- Group 2: Scanning ---
+        scan_group = QGroupBox("Scanning")
+        scan_layout = QFormLayout()
+        self.form_layouts.append(scan_layout)
 
         self.auto_scan_interval_spin_label = QLabel("Scan Interval (Cooldown):")
         self.auto_scan_interval_spin = QDoubleSpinBox()
@@ -119,16 +90,11 @@ class SettingsDialog(QDialog):
         self.auto_scan_interval_spin.setValue(config.auto_scan_interval_seconds)
         self.auto_scan_interval_spin.setSuffix(" s")
         self.auto_scan_interval_spin.setToolTip(
-            "Prevents auto ocr to occur with a high frequency\nCan reduce system load, but worsens perceived latency")
-        auto_layout.addRow(self.auto_scan_interval_spin_label, self.auto_scan_interval_spin)
+            "Minimum time between OCR scans\nCan reduce system load, but worsens perceived latency")
+        scan_layout.addRow(self.auto_scan_interval_spin_label, self.auto_scan_interval_spin)
 
-        self.auto_scan_no_hotkey_check_label = QLabel("Show Popup without Hotkey:")
-        self.auto_scan_no_hotkey_check = QCheckBox()
-        self.auto_scan_no_hotkey_check.setChecked(config.auto_scan_mode_lookups_without_hotkey)
-        auto_layout.addRow(self.auto_scan_no_hotkey_check_label, self.auto_scan_no_hotkey_check)
-
-        auto_group.setLayout(auto_layout)
-        self.tab_general_layout.addWidget(auto_group)
+        scan_group.setLayout(scan_layout)
+        self.tab_general_layout.addWidget(scan_group)
 
         # --- Group 3: Popup Behavior ---
         behavior_group = QGroupBox("Popup Behavior")
@@ -316,7 +282,6 @@ class SettingsDialog(QDialog):
 
         # Initialize UI States
         self._update_color_buttons()
-        self._update_auto_scan_state(self.auto_scan_check.isChecked())
         self._update_kanji_options_state(self.show_kanji_check.isChecked())
 
     def _set_expanding(self, widget):
@@ -348,15 +313,6 @@ class SettingsDialog(QDialog):
                 item = layout.itemAt(i, QFormLayout.ItemRole.LabelRole)
                 if item and item.widget():
                     item.widget().setMinimumWidth(max_label_width)
-
-    def _update_auto_scan_state(self, is_checked):
-        """Grays out auto scan options if the main toggle is off."""
-        self.auto_scan_interval_spin.setEnabled(is_checked)
-        self.auto_scan_no_hotkey_check.setEnabled(is_checked)
-        self.auto_scan_mouse_move_check.setEnabled(is_checked)
-        self.auto_scan_interval_spin_label.setEnabled(is_checked)
-        self.auto_scan_no_hotkey_check_label.setEnabled(is_checked)
-        self.auto_scan_mouse_move_check_label.setEnabled(is_checked)
 
     def _update_kanji_options_state(self, is_checked):
         """Enables/Disables kanji specific sub-options."""
@@ -392,12 +348,8 @@ class SettingsDialog(QDialog):
             self._mark_as_custom()
 
     def save_and_accept(self):
-        config.hotkey = self.hotkey_combo.currentText()
         config.max_lookup_length = self.max_lookup_spin.value()
-        config.auto_scan_mode = self.auto_scan_check.isChecked()
         config.auto_scan_interval_seconds = self.auto_scan_interval_spin.value()
-        config.auto_scan_mode_lookups_without_hotkey = self.auto_scan_no_hotkey_check.isChecked()
-        config.auto_scan_on_mouse_move = self.auto_scan_mouse_move_check.isChecked()
 
         config.compact_mode = self.compact_check.isChecked()
         config.show_all_glosses = self.show_glosses_check.isChecked()
@@ -419,7 +371,6 @@ class SettingsDialog(QDialog):
         config.save()
 
         # Tell the live components to re-apply settings
-        self.input_loop.reapply_settings()
         self.popup_window.reapply_settings()
         self.tray_icon.reapply_settings()
         self.ocr_processor.shared_state.screenshot_trigger_event.set()

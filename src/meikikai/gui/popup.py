@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class Popup(QWidget):
-    def __init__(self, shared_state, input_loop):
+    def __init__(self, shared_state):
         super().__init__()
         self._latest_data = None
         self._last_latest_data = None
@@ -31,7 +31,6 @@ class Popup(QWidget):
         self._auto_pause_media_triggered = False
 
         self.shared_state = shared_state
-        self.input_loop = input_loop
 
         self.is_visible = False
         self.timer = QTimer(self)
@@ -169,7 +168,7 @@ class Popup(QWidget):
             self.setFixedSize(new_size)
         self._last_latest_data = latest_data
 
-        if self._latest_data and self.input_loop.is_virtual_hotkey_down() and config.is_enabled:
+        if self._latest_data and config.is_enabled:
             self.show_popup()
         else:
             self.hide_popup()

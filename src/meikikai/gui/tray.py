@@ -12,7 +12,7 @@ from meikikai.utils.paths import paths
 
 
 class TrayIcon(QSystemTrayIcon):
-    def __init__(self, screen_manager, ocr_processor: OcrProcessor, popup_window, input_loop, lookup, parent=None):
+    def __init__(self, screen_manager, ocr_processor: OcrProcessor, popup_window, lookup, parent=None):
         icon_path = paths.get_resource_path('menubar_icon.png')
         icon_inactive_path = paths.get_resource_path('menubar_icon.inactive.png')
 
@@ -32,7 +32,6 @@ class TrayIcon(QSystemTrayIcon):
         self.screen_manager = screen_manager
         self.ocr_processor = ocr_processor
         self.popup_window = popup_window
-        self.input_loop = input_loop
         self.lookup = lookup
         self.scan_screen_actions = []
 
@@ -56,22 +55,6 @@ class TrayIcon(QSystemTrayIcon):
         self.menu.addAction("Settings").triggered.connect(self.show_settings)
 
         self.menu.addSeparator()
-
-        # Scan Mode Selection
-        scan_mode_menu = self.menu.addMenu("Scan Mode")
-        self.scan_mode_action_group = QActionGroup(self)
-        self.scan_mode_action_group.setExclusive(True)
-        self.scan_mode_action_group.triggered.connect(self._on_scan_mode_selected)
-
-        manual_action = scan_mode_menu.addAction("Manual")
-        manual_action.setCheckable(True)
-        manual_action.setChecked(not config.auto_scan_mode)
-        self.scan_mode_action_group.addAction(manual_action)
-
-        auto_action = scan_mode_menu.addAction("Auto")
-        auto_action.setCheckable(True)
-        auto_action.setChecked(config.auto_scan_mode)
-        self.scan_mode_action_group.addAction(auto_action)
 
         # Scan Screen Selection
         scan_screen_menu = self.menu.addMenu("Scan Screen")
@@ -124,12 +107,6 @@ class TrayIcon(QSystemTrayIcon):
 
         action_to_check.setChecked(True)
 
-    def _on_scan_mode_selected(self, action: QAction):
-        is_auto = action.text() == "Auto"
-        if is_auto != config.auto_scan_mode:
-            config.auto_scan_mode = is_auto
-            config.save()
-
     def _on_scan_screen_selected(self, action: QAction):
         index = int(action.data())
         if index != config.scan_screen:
@@ -143,14 +120,8 @@ class TrayIcon(QSystemTrayIcon):
         """Updates the tray menu's checkmarks to reflect the current config."""
         self.auto_pause_media_action.setChecked(config.auto_pause_media)
 
-        for action in self.scan_mode_action_group.actions():
-            is_auto_action = action.text() == "Auto"
-            if is_auto_action == config.auto_scan_mode:
-                action.setChecked(True)
-                break
-
     def show_settings(self):
-        settings_dialog = SettingsDialog(self.ocr_processor, self.popup_window, self.input_loop, self.lookup, self)
+        settings_dialog = SettingsDialog(self.ocr_processor, self.popup_window, self.lookup, self)
         self._activate_app_on_mac()
         QTimer.singleShot(0, lambda: self._raise_settings_dialog(settings_dialog))
         settings_dialog.exec()

@@ -23,13 +23,9 @@ class Config:
 
     _SCHEMA = {
         'Settings': {
-            'hotkey': 'shift',
             'scan_screen': 1,
             'max_lookup_length': 25,
-            'auto_scan_mode': True,
-            'auto_scan_mode_lookups_without_hotkey': True,
             'auto_scan_interval_seconds': 0.5,
-            'auto_scan_on_mouse_move': True,
             'auto_pause_media': False
         },
         'Theme': {
