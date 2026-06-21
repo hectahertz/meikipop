@@ -75,12 +75,12 @@ KANJI_CARD_BG = "rgba(139, 216, 255, 12)"
 KANJI_CARD_BORDER = "rgba(139, 216, 255, 32)"
 KANJI_GLYPH_BG = "rgba(139, 216, 255, 18)"
 
-WORD_FONT_SIZE = 24
-KANJI_GLYPH_FONT_SIZE = 34
-READING_FONT_SIZE = 15
-DEFINITION_FONT_SIZE = 13
+WORD_FONT_SIZE = 21
+KANJI_GLYPH_FONT_SIZE = 31
+READING_FONT_SIZE = 14
+DEFINITION_FONT_SIZE = 12
 META_FONT_SIZE = 11
-DETAIL_FONT_SIZE = 11
+DETAIL_FONT_SIZE = 10
 
 MAX_VOCAB_ENTRIES = 3
 MAX_SENSES_PER_ENTRY = 3
@@ -520,7 +520,7 @@ class Popup(QWidget):
             entry.written_form,
             WORD_COLOR,
             WORD_FONT_SIZE,
-            QFont.Weight.ExtraBold,
+            QFont.Weight.Medium,
         ))
         if entry.reading:
             row_layout.addWidget(self._plain_label(
@@ -591,7 +591,7 @@ class Popup(QWidget):
             entry.character,
             WORD_COLOR,
             KANJI_GLYPH_FONT_SIZE,
-            QFont.Weight.ExtraBold,
+            QFont.Weight.Medium,
             48,
         )
         glyph_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
