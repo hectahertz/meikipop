@@ -1,67 +1,55 @@
 # MeikiKai
 
-MeikiKai is a macOS Japanese OCR popup dictionary. It watches a selected screen, reads visible Japanese text with OCR, and shows dictionary entries when you hover text.
+MeikiKai is a macOS Japanese OCR popup dictionary. Hover Japanese text on screen to see dictionary entries.
 
 ![MeikiKai popup example](https://github.com/user-attachments/assets/39b415d8-2ed9-4a57-8b96-e25c96a87bb1)
 
-This project is a fork of [rtr46/meikipop](https://github.com/rtr46/meikipop). Thank you to rtr46 and the MeikiPop contributors for the original app, dictionary pipeline, OCR architecture, and overall reading workflow this fork builds on.
+Forked from [rtr46/meikipop](https://github.com/rtr46/meikipop).
 
-## What changed in this fork
+## What changed
 
-MeikiKai renames the app, Python package, CLI, support files, and build artifacts around the new name, while narrowing the app experience around macOS:
+### Added
 
-- Renamed the desktop app, package, and command to **MeikiKai** / `meikikai`.
-- macOS-only runtime, packaging, paths, permissions, and input handling.
-- Streamlined the app around a focused macOS-only reading workflow.
-- Simplified lookup to always-on OCR over a selected display or all displays.
-- Redesigned the lookup popup around a fixed-width dark layout with vocab summaries, deconjugation, kanji cards, examples, and omission counts.
-- Refined the settings dialog into focused Lookup, Scanning, and Popup sections.
-- Added separate app and menu bar icons, including an inactive icon when paused.
-- Moved enable/pause and media auto-pause controls into the menu bar menu.
-- Added optional media auto-pause while the popup is open, with macOS Accessibility permission checks.
+- Native **MeikiKai** naming.
+- Dark redesigned popup.
+- Cleaner settings.
+- App and menu bar icons.
+- Menu bar controls.
+- Optional media auto-pause.
+
+### Simplified
+
+- macOS-only app flow.
+- Always-on OCR for one display or all displays.
+- Local OCR with `meikiocr`.
+- One bundled popup layout.
 
 ## Features
 
-- **Screen-wide lookup:** works with games, manga, videos, PDFs, websites, and other apps because it reads pixels from the selected screen.
-- **Display selection:** OCR one full display or all displays from the menu bar.
-- **Always-on auto scan:** keeps OCR results warm in the background for responsive hover lookups.
-- **Hover popup:** dictionary entries appear next to the cursor in a fixed-width dark popup, with configurable placement including a visual-novel-friendly mode.
-- **Bundled dictionary details:** shows word lookup, deconjugation, frequency ranking, POS/tags, glosses, kanji readings, examples, and components without popup content toggles.
-- **Local OCR:** uses fast local `meikiocr` for Japanese text recognition.
-- **JMdict/KANJIDIC dictionary:** includes word lookup, deconjugation, frequency ranking, kanji entries, components, and examples.
-- **Yomitan imports:** replace the bundled dictionary with one or more Yomitan/Yomichan dictionaries.
-- **macOS integration:** popup windows stay visible across Spaces, settings are raised to the foreground, and media auto-pause uses the macOS Play/Pause key when enabled.
+- Works anywhere text is visible: games, manga, videos, PDFs, websites, and more.
+- Uses local Japanese OCR.
+- Supports JMdict/KANJIDIC lookup, deconjugation, frequency, kanji, and examples.
+- Imports Yomitan/Yomichan dictionaries.
+- Stays visible across macOS Spaces.
 
 ## Requirements
 
 - macOS
-- Python 3.10 or newer if running from source
-- macOS permissions for the app or terminal you use to run it:
-  - **Screen Recording**
-  - **Accessibility**
-  - **Input Monitoring**
+- Python 3.10+ when running from source
+- macOS permissions: Screen Recording, Accessibility, and Input Monitoring
 
-MeikiKai stores user data and logs in:
-
-- `~/Library/Application Support/meikikai/config.ini`
-- `~/Library/Application Support/meikikai/dictionary.pkl`
-- `~/Library/Caches/meikikai/`
-- `~/Library/Logs/MeikiKai/meikikai.log`
+Data: `~/Library/Application Support/meikikai/`. Caches: `~/Library/Caches/meikikai/`. Logs: `~/Library/Logs/MeikiKai/`.
 
 ## Install
 
-### macOS app bundle
+Download the latest app bundle:
 
-Download the latest release from this fork:
+<https://github.com/hectahertz/meikikai/releases/latest>
 
-- <https://github.com/hectahertz/meikikai/releases/latest>
-
-Unpack it, start `MeikiKai.app`, then grant the macOS permissions listed above when prompted or from System Settings.
-
-### Development setup
+Or run from source:
 
 ```bash
-git clone https://github.com/hectahertz/meikikai.git meikikai
+git clone https://github.com/hectahertz/meikikai.git
 cd meikikai
 python -m pip install -e .
 meikikai
@@ -69,73 +57,46 @@ meikikai
 
 ## Usage
 
-1. Start MeikiKai with `MeikiKai.app` or `meikikai`.
+1. Start `MeikiKai.app` or run `meikikai`.
 2. Move the mouse over Japanese text on the selected screen.
-3. Right-click the menu bar icon to enable/pause MeikiKai, toggle media auto-pause, open settings, choose scan screen, or quit.
-
-## OCR
-
-MeikiKai uses local `meikiocr` for Japanese text recognition. It is optimized for Japanese game text, and the `meikiocr` package handles its models.
+3. Use the menu bar icon for pause, media auto-pause, settings, screen selection, and quit.
 
 ## Dictionary commands
 
-MeikiKai downloads the default dictionary on first run if `dictionary.pkl` is missing. If an old MeikiPop dictionary exists, MeikiKai migrates it into the new app support directory before downloading a fresh copy. To rebuild the dictionary from source data:
+MeikiKai downloads the default dictionary on first run and migrates an old MeikiPop dictionary if found.
 
 ```bash
+# Rebuild the default dictionary
 meikikai build-dict
-```
 
-To replace it with Yomitan/Yomichan dictionaries:
-
-```bash
-# Preserve supported structured HTML formatting
+# Import Yomitan/Yomichan dictionaries
 meikikai import-yomitan-dict-html dict.zip
-
-# Import compact plain-text definitions
-meikikai import-yomitan-dict-text dict.zip
-
-# Merge multiple dictionaries into one dictionary.pkl
 meikikai import-yomitan-dict-text dict1.zip dict2.zip
 ```
 
 Imports overwrite `~/Library/Application Support/meikikai/dictionary.pkl`.
 
-## Settings
-
-Open settings from the menu bar icon. Useful options include:
-
-- maximum lookup length
-- OCR scan cooldown
-- popup placement mode
-
-Media auto-pause is toggled directly from the menu bar menu.
-
 ## Popup sample
 
-Regenerate the popup image used above with:
+Regenerate the README image with:
 
 ```bash
 .venv/bin/python scripts/render_popup_sample.py mockup -o /tmp/meikikai_popup_mockup.png
 ```
 
-## Building the macOS app
-
-This fork keeps a PyInstaller spec for the macOS bundle:
+## Build the macOS app
 
 ```bash
 pyinstaller meikikai.macos.spec
 ```
 
-The generated bundle is named `MeikiKai.app`.
-
-For local development, this script builds, optionally signs from `.env`, installs to `/Applications`, and opens the installed app:
+Build, install, and reopen locally:
 
 ```bash
 cp .env.example .env
-# Edit MEIKIKAI_CODESIGN_IDENTITY in .env, or leave it unset for ad-hoc signing.
 scripts/build_install_macos.sh
 ```
 
 ## License
 
-MeikiKai inherits MeikiPop's GNU General Public License v3.0 license. See [LICENSE](LICENSE).
+GPL-3.0. See [LICENSE](LICENSE).
