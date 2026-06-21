@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'meikikai-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish'
+        required: true
+        default: 'meikikai-v1.0.0'
 
 jobs:
   build-macos:
@@ -23,8 +29,8 @@ jobs:
       - name: create release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: MeikiKai ${{ github.ref_name }}
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: MeikiKai ${{ github.event.inputs.tag || github.ref_name }}
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-rc') }}
+          prerelease: ${{ contains(github.event.inputs.tag || github.ref_name, '-rc') }}
           files: artifacts/*/*.dmg
