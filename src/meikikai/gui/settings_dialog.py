@@ -170,13 +170,6 @@ class SettingsDialog(QDialog):
         self.compact_check.setChecked(config.compact_mode)
         behavior_layout.addRow("Compact Mode:", self.compact_check)
 
-        self.auto_pause_media_check = QCheckBox()
-        self.auto_pause_media_check.setChecked(config.auto_pause_media)
-        self.auto_pause_media_check.setToolTip(
-            "Toggle the macOS Play/Pause media key when the popup opens, then toggle it again when the popup closes."
-        )
-        behavior_layout.addRow("Auto Pause media while popup is open:", self.auto_pause_media_check)
-
         behavior_group.setLayout(behavior_layout)
         self.tab_general_layout.addWidget(behavior_group)
         self.tab_general_layout.addStretch()
@@ -437,7 +430,6 @@ class SettingsDialog(QDialog):
         config.auto_scan_on_mouse_move = self.auto_scan_mouse_move_check.isChecked()
 
         config.compact_mode = self.compact_check.isChecked()
-        config.auto_pause_media = self.auto_pause_media_check.isChecked()
         config.show_all_glosses = self.show_glosses_check.isChecked()
         config.show_deconjugation = self.show_deconj_check.isChecked()
         config.show_pos = self.show_pos_check.isChecked()

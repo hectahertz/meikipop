@@ -42,6 +42,14 @@ class TrayIcon(QSystemTrayIcon):
         self.enable_action.triggered.connect(self.set_enabled_state)
         self.set_enabled_state(config.is_enabled)
 
+        self.auto_pause_media_action = self.menu.addAction("Auto Pause Media")
+        self.auto_pause_media_action.setCheckable(True)
+        self.auto_pause_media_action.setToolTip(
+            "Toggle the macOS Play/Pause media key when the popup opens, then toggle it again when the popup closes."
+        )
+        self.auto_pause_media_action.setChecked(config.auto_pause_media)
+        self.auto_pause_media_action.triggered.connect(self.set_auto_pause_media_state)
+
         self.menu.addSeparator()
 
         self.menu.addAction("Settings").triggered.connect(self.show_settings)
@@ -112,6 +120,11 @@ class TrayIcon(QSystemTrayIcon):
         else:
             self.setIcon(self.icon_inactive)
 
+    def set_auto_pause_media_state(self, enabled):
+        config.auto_pause_media = enabled
+        self.auto_pause_media_action.setChecked(enabled)
+        config.save()
+
     def update_scan_screen_check(self):
         current_screen = config.scan_screen
         action_to_check = None
@@ -147,6 +160,8 @@ class TrayIcon(QSystemTrayIcon):
 
     def reapply_settings(self):
         """Updates the tray menu's checkmarks to reflect the current config."""
+        self.auto_pause_media_action.setChecked(config.auto_pause_media)
+
         for action in self.ocr_action_group.actions():
             if action.text() == config.ocr_provider:
                 action.setChecked(True)
