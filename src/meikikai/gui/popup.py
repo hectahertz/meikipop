@@ -248,7 +248,7 @@ class Popup(QWidget):
         mouse_pos = QCursor.pos()
         self.move_to(mouse_pos.x(), mouse_pos.y())
 
-        if self._latest_data and config.is_enabled:
+        if self._latest_data and not config.is_paused:
             self.show_popup()
         else:
             self.hide_popup()

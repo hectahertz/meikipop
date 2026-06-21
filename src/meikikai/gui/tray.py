@@ -36,10 +36,10 @@ class TrayIcon(QSystemTrayIcon):
 
         self.menu = QMenu()
 
-        self.enable_action = self.menu.addAction(f"{APP_NAME} Enabled")
-        self.enable_action.setCheckable(True)
-        self.enable_action.triggered.connect(self.set_enabled_state)
-        self.set_enabled_state(config.is_enabled)
+        self.pause_action = self.menu.addAction(f"Pause {APP_NAME}")
+        self.pause_action.setCheckable(True)
+        self.pause_action.triggered.connect(self.set_paused_state)
+        self.set_paused_state(config.is_paused)
 
         self.auto_pause_media_action = self.menu.addAction("Auto Pause Media")
         self.auto_pause_media_action.setCheckable(True)
@@ -79,14 +79,14 @@ class TrayIcon(QSystemTrayIcon):
         self.setToolTip(APP_NAME)
         self.show()
 
-    def set_enabled_state(self, enabled):
-        """Sets the enabled/paused state of the application."""
-        config.is_enabled = enabled
-        self.enable_action.setChecked(enabled)
-        if enabled:
-            self.setIcon(self.icon)
-        else:
+    def set_paused_state(self, paused):
+        """Sets the paused state of the application."""
+        config.is_paused = paused
+        self.pause_action.setChecked(paused)
+        if paused:
             self.setIcon(self.icon_inactive)
+        else:
+            self.setIcon(self.icon)
 
     def set_auto_pause_media_state(self, enabled):
         config.auto_pause_media = enabled

@@ -34,7 +34,7 @@ class ScreenManager(threading.Thread):
         logger.debug("Screenshot thread started.")
         while self.shared_state.running:
             try:
-                if not config.is_enabled:
+                if config.is_paused:
                     logger.debug("paused")
                     self._sleep_and_retrigger(1)
                     continue

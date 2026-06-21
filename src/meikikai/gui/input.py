@@ -152,7 +152,7 @@ class InputLoop(threading.Thread):
         self.shared_state.screenshot_trigger_event.set()
 
         while self.shared_state.running:
-            if not config.is_enabled:
+            if config.is_paused:
                 time.sleep(0.1)
                 continue
             try:

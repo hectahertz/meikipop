@@ -60,7 +60,7 @@ class Config:
                     val = default
                 setattr(self, key, val)
 
-        self.is_enabled = True
+        self.is_paused = False
         if found:
             logger.info(f"Configuration loaded from '{CONFIG_PATH}'.")
         else:
