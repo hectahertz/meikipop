@@ -25,7 +25,6 @@ from typing import Optional
 
 from meikikai.utils.paths import paths
 
-DATA_DIR          = 'data'
 DEFAULT_OUTPUT = paths.dictionary_path
 DECONJUGATOR_PATH = os.path.join(os.path.dirname(__file__), 'deconjugator.json')
 DEFAULT_FREQ      = 999_999
@@ -172,7 +171,7 @@ def load_term_banks_from_zip(zf: zipfile.ZipFile) -> list:
 
 # ── Building the internal structures ──────────────────────────────────────────
 
-def build_from_zip(zf: zipfile.ZipFile, dict_index: int, freq_override: dict) -> tuple:
+def build_from_zip(zf: zipfile.ZipFile, dict_index: int) -> tuple:
     """
     Process one zip file and return (entries, lookup_map_additions).
 
@@ -180,14 +179,8 @@ def build_from_zip(zf: zipfile.ZipFile, dict_index: int, freq_override: dict) ->
     lookup_map_additions: {surface: [(written_form, reading, freq, entry_id), ...]}
 
     dict_index is used to namespace entry IDs: entry_id = dict_index * ID_NAMESPACE + sequence
-    freq_override allows the caller to pass in a pre-merged frequency map.
     """
     freq_map = load_freq_map_from_zip(zf)
-    # Merge with any externally provided overrides (unused in standalone mode,
-    # kept for future additive use)
-    for k, v in freq_override.items():
-        if k not in freq_map or v < freq_map[k]:
-            freq_map[k] = v
 
     rows = load_term_banks_from_zip(zf)
     print(f"    {len(rows)} term rows loaded")
@@ -339,7 +332,7 @@ def main(argv=None):
                 print(f"    Revision: {idx.get('revision', '(unknown)')}")
                 print(f"    Author:   {idx.get('author', '(unknown)')}")
 
-            entries, lookup_additions = build_from_zip(zf, dict_index=i, freq_override={})
+            entries, lookup_additions = build_from_zip(zf, dict_index=i)
 
         # Merge into combined structures
         # On entry_id collision (same sequence across different dicts), last writer wins.

@@ -27,7 +27,6 @@ from typing import Optional
 
 from meikikai.utils.paths import paths
 
-DATA_DIR = 'data'
 DEFAULT_OUTPUT = paths.dictionary_path
 DECONJUGATOR_PATH = os.path.join(os.path.dirname(__file__), 'deconjugator.json')
 DEFAULT_FREQ = 999_999
@@ -423,7 +422,6 @@ def _has_kanji(text: str) -> bool:
 def build_from_zip(
         zf: zipfile.ZipFile,
         dict_index: int,
-        freq_override: dict,
         converter: StructuredContentConverter,
 ) -> tuple:
     """
@@ -433,9 +431,6 @@ def build_from_zip(
     lookup_map_additions: {surface: [(written_form, reading, freq, entry_id), ...]}
     """
     freq_map = load_freq_map_from_zip(zf)
-    for k, v in freq_override.items():
-        if k not in freq_map or v < freq_map[k]:
-            freq_map[k] = v
 
     rows = load_term_banks_from_zip(zf)
     print(f"    {len(rows)} term rows loaded")
@@ -562,7 +557,7 @@ def main(argv=None):
                 print(f"    Author:   {idx.get('author', '(unknown)')}")
 
             entries, lookup_additions = build_from_zip(
-                zf, dict_index=i, freq_override={}, converter=converter)
+                zf, dict_index=i, converter=converter)
 
         all_entries.update(entries)
         for surface, me_list in lookup_additions.items():
