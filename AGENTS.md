@@ -30,6 +30,18 @@ Repo-specific guidance for coding agents working on MeikiKai.
 - After rebuilding or re-signing the app, macOS TCC permissions can become stale. If Accessibility appears checked but media automation fails, remove MeikiKai from Accessibility and add/approve it again, then relaunch.
 - The installed app bundle is `/Applications/MeikiKai.app` and bundle identifier is `dev.hectahertz.meikikai`.
 
+## Release guidance
+
+- Project/package/app version is centralized in `src/meikikai/_version.py`.
+- Release tags use `meikikai-vX.Y.Z`, for example `meikikai-v1.1.0`.
+- Before releasing, bump `__version__`, run targeted syntax validation, commit the version bump, create an annotated tag, and push `main` plus the tag.
+- The `Release` GitHub Actions workflow builds the macOS DMG and publishes the GitHub release with generated notes.
+- If pushing the tag does not start the workflow, dispatch it manually:
+  - `gh workflow run release.yml --ref main -f tag=meikikai-vX.Y.Z`
+  - `gh run watch <run-id> --exit-status`
+- After the workflow completes, verify the release and uploaded DMG:
+  - `gh release view meikikai-vX.Y.Z --json tagName,name,url,isDraft,isPrerelease,assets,publishedAt`
+
 ## Validation guidance
 
 - Prefer targeted validation over full builds for small edits.
