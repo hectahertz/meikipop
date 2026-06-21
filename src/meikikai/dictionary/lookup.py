@@ -99,8 +99,8 @@ class Lookup(threading.Thread):
 
         results = self._do_lookup(text)
 
-        # Append kanji entry for the first character if applicable
-        if config.show_kanji and KANJI_REGEX.match(text[0]):
+        # Append bundled kanji data for the first character when available.
+        if KANJI_REGEX.match(text[0]):
             kd = self.dictionary.kanji_entries.get(text[0])
             if kd:
                 results.append(KanjiEntry(

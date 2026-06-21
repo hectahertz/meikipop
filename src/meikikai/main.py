@@ -90,7 +90,7 @@ def run_gui():
 
     ocr_processor = OcrProcessor(shared_state)
     hit_scanner = HitScanner(shared_state, input_loop, screen_manager)
-    tray_icon = TrayIcon(screen_manager, ocr_processor, popup_window, lookup)
+    tray_icon = TrayIcon(screen_manager, ocr_processor, popup_window)
 
     for t in [lookup, hit_scanner, ocr_processor, screen_manager, input_loop]:
         t.start()

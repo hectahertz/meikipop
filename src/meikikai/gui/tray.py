@@ -12,7 +12,7 @@ from meikikai.utils.paths import paths
 
 
 class TrayIcon(QSystemTrayIcon):
-    def __init__(self, screen_manager, ocr_processor: OcrProcessor, popup_window, lookup, parent=None):
+    def __init__(self, screen_manager, ocr_processor: OcrProcessor, popup_window, parent=None):
         icon_path = paths.get_resource_path('menubar_icon.png')
         icon_inactive_path = paths.get_resource_path('menubar_icon.inactive.png')
 
@@ -32,7 +32,6 @@ class TrayIcon(QSystemTrayIcon):
         self.screen_manager = screen_manager
         self.ocr_processor = ocr_processor
         self.popup_window = popup_window
-        self.lookup = lookup
         self.scan_screen_actions = []
 
         self.menu = QMenu()
@@ -121,7 +120,7 @@ class TrayIcon(QSystemTrayIcon):
         self.auto_pause_media_action.setChecked(config.auto_pause_media)
 
     def show_settings(self):
-        settings_dialog = SettingsDialog(self.ocr_processor, self.popup_window, self.lookup, self)
+        settings_dialog = SettingsDialog(self.ocr_processor, self.popup_window, self)
         self._activate_app_on_mac()
         QTimer.singleShot(0, lambda: self._raise_settings_dialog(settings_dialog))
         settings_dialog.exec()

@@ -26,27 +26,7 @@ class Config:
             'scan_screen': 1,
             'max_lookup_length': 25,
             'auto_scan_interval_seconds': 0.5,
-            'auto_pause_media': False
-        },
-        'Theme': {
-            'theme_name': 'Nazeka',
-            'font_family': '',
-            'font_size_definitions': 14,
-            'font_size_header': 18,
-            'compact_mode': True,
-            'show_all_glosses': False,
-            'show_deconjugation': False,
-            'show_pos': False,
-            'show_tags': False,
-            'show_frequency': False,
-            'show_kanji': True,
-            'show_examples': True,
-            'show_components': True,
-            'color_background': '#2E2E2E',
-            'color_foreground': '#F0F0F0',
-            'color_highlight_word': '#88D8FF',
-            'color_highlight_reading': '#90EE90',
-            'background_opacity': 245,
+            'auto_pause_media': False,
             'popup_position_mode': 'visual_novel_mode'
         }
     }
@@ -63,15 +43,19 @@ class Config:
 
         for section, settings in self._SCHEMA.items():
             for key, default in settings.items():
-                if parser.has_option(section, key):
+                source_section = section
+                if not parser.has_option(source_section, key):
+                    source_section = self._legacy_section_for(key)
+
+                if source_section and parser.has_option(source_section, key):
                     if isinstance(default, bool):
-                        val = parser.getboolean(section, key)
+                        val = parser.getboolean(source_section, key)
                     elif isinstance(default, int):
-                        val = parser.getint(section, key)
+                        val = parser.getint(source_section, key)
                     elif isinstance(default, float):
-                        val = parser.getfloat(section, key)
+                        val = parser.getfloat(source_section, key)
                     else:
-                        val = parser.get(section, key)
+                        val = parser.get(source_section, key)
                 else:
                     val = default
                 setattr(self, key, val)
@@ -81,6 +65,11 @@ class Config:
             logger.info(f"Configuration loaded from '{CONFIG_PATH}'.")
         else:
             logger.info(f"No configuration found at '{CONFIG_PATH}'. A new one will be created with default values.")
+
+    def _legacy_section_for(self, key: str):
+        if key == 'popup_position_mode':
+            return 'Theme'
+        return None
 
     def save(self):
         parser = configparser.ConfigParser()

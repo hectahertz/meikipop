@@ -3,14 +3,25 @@ import logging
 import os
 import threading
 from ctypes import c_void_p
+from html import escape
 from typing import List, Optional
 
-from PyQt6.QtCore import QTimer, QPoint, QSize
+from PyQt6.QtCore import QTimer, QPoint, QRect, QSize
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QCursor, QFont, QFontMetrics, QFontInfo
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QFrame, QApplication
+from PyQt6.QtGui import QCursor, QFont
+from PyQt6.QtWidgets import (
+    QApplication,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLayout,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from meikikai.config.config import config
+from meikikai.dictionary.customdict import DEFAULT_FREQ
 from meikikai.dictionary.lookup import DictionaryEntry, KanjiEntry
 from meikikai.gui.input import toggle_macos_play_pause_key
 
@@ -37,6 +48,121 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+FONT_FAMILY = "Hiragino Sans"
+FONT_STACK_QSS = '"SF Pro Text", "Helvetica Neue", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif'
+
+POPUP_WIDTH = 496
+CONTENT_MARGIN_LEFT = 12
+CONTENT_MARGIN_TOP = 10
+CONTENT_MARGIN_RIGHT = 12
+CONTENT_MARGIN_BOTTOM = 14
+CONTENT_WIDTH = POPUP_WIDTH - CONTENT_MARGIN_LEFT - CONTENT_MARGIN_RIGHT - 2
+SHADOW_MARGIN = 0
+
+POPUP_BG = "rgba(24, 27, 36, 246)"
+POPUP_BORDER = "rgba(237, 241, 247, 34)"
+TEXT_COLOR = "#edf1f7"
+DEFINITION_COLOR = "#eef2f8"
+MUTED_COLOR = "#a8b0c2"
+WORD_COLOR = "#8bd8ff"
+READING_COLOR = "#98e6a3"
+SEPARATOR_COLOR = "rgba(237, 241, 247, 22)"
+META_COLOR = "#929cae"
+META_LABEL_COLOR = "#768195"
+DECONJ_COLOR = "#c6b57f"
+SENSE_NUMBER_COLOR = "#768195"
+KANJI_CARD_BG = "rgba(139, 216, 255, 12)"
+KANJI_CARD_BORDER = "rgba(139, 216, 255, 32)"
+KANJI_GLYPH_BG = "rgba(139, 216, 255, 18)"
+
+WORD_FONT_SIZE = 24
+KANJI_GLYPH_FONT_SIZE = 34
+READING_FONT_SIZE = 15
+DEFINITION_FONT_SIZE = 13
+META_FONT_SIZE = 11
+DETAIL_FONT_SIZE = 11
+
+MAX_VOCAB_ENTRIES = 3
+MAX_SENSES_PER_ENTRY = 3
+MAX_GLOSSES_PER_SENSE = 4
+
+
+class FlowLayout(QLayout):
+    def __init__(self, parent=None, h_spacing=7, v_spacing=5):
+        super().__init__(parent)
+        self._items = []
+        self._h_spacing = h_spacing
+        self._v_spacing = v_spacing
+        self.setContentsMargins(0, 0, 0, 0)
+
+    def addItem(self, item):
+        self._items.append(item)
+
+    def count(self):
+        return len(self._items)
+
+    def itemAt(self, index):
+        if 0 <= index < len(self._items):
+            return self._items[index]
+        return None
+
+    def takeAt(self, index):
+        if 0 <= index < len(self._items):
+            return self._items.pop(index)
+        return None
+
+    def expandingDirections(self):
+        return Qt.Orientation(0)
+
+    def hasHeightForWidth(self):
+        return True
+
+    def heightForWidth(self, width):
+        return self._do_layout(QRect(0, 0, width, 0), True)
+
+    def setGeometry(self, rect):
+        super().setGeometry(rect)
+        self._do_layout(rect, False)
+
+    def sizeHint(self):
+        return self.minimumSize()
+
+    def minimumSize(self):
+        size = QSize()
+        for item in self._items:
+            size = size.expandedTo(item.minimumSize())
+
+        margins = self.contentsMargins()
+        size += QSize(margins.left() + margins.right(), margins.top() + margins.bottom())
+        return size
+
+    def _do_layout(self, rect, test_only):
+        x = rect.x()
+        y = rect.y()
+        line_height = 0
+        h_spacing = self._h_spacing
+        v_spacing = self._v_spacing
+
+        for item in self._items:
+            item_size = item.sizeHint()
+            item_width = min(item_size.width(), rect.width())
+            item_height = item.heightForWidth(item_width) if item.hasHeightForWidth() else item_size.height()
+
+            next_x = x + item_width + h_spacing
+            if next_x - h_spacing > rect.right() and line_height > 0:
+                x = rect.x()
+                y = y + line_height + v_spacing
+                next_x = x + item_width + h_spacing
+                line_height = 0
+
+            if not test_only:
+                item.setGeometry(QRect(QPoint(x, y), QSize(item_width, item_height)))
+
+            x = next_x
+            line_height = max(line_height, item_height)
+
+        return y + line_height - rect.y()
+
 
 class Popup(QWidget):
     def __init__(self, shared_state):
@@ -54,13 +180,9 @@ class Popup(QWidget):
         self.timer.timeout.connect(self.process_latest_data_loop)
         self.timer.start(10)
 
-        self.probe_label = QLabel()
-        self.probe_label.setWordWrap(True)
-        self.probe_label.setTextFormat(Qt.TextFormat.RichText)
-
-        self.is_calibrated = False
-        self.header_chars_per_line = 50
-        self.def_chars_per_line = 50
+        base_font = QFont(FONT_FAMILY)
+        base_font.setPixelSize(DEFINITION_FONT_SIZE)
+        self.setFont(base_font)
 
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint |
@@ -76,100 +198,38 @@ class Popup(QWidget):
         self.setStyleSheet("background: transparent;")
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setContentsMargins(SHADOW_MARGIN, SHADOW_MARGIN, SHADOW_MARGIN, SHADOW_MARGIN)
+        main_layout.setSpacing(0)
 
         self.frame = QFrame()
+        self.frame.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame.setObjectName("popupFrame")
+        self.frame.setFixedWidth(POPUP_WIDTH)
         self._apply_frame_stylesheet()
         main_layout.addWidget(self.frame)
 
         self.content_layout = QVBoxLayout(self.frame)
-        self.content_layout.setContentsMargins(10, 10, 10, 10)
-
-        self.display_label = QLabel()
-        self.display_label.setWordWrap(True)
-        self.display_label.setTextFormat(Qt.TextFormat.RichText)
-        self.content_layout.addWidget(self.display_label)
+        self.content_layout.setContentsMargins(
+            CONTENT_MARGIN_LEFT,
+            CONTENT_MARGIN_TOP,
+            CONTENT_MARGIN_RIGHT,
+            CONTENT_MARGIN_BOTTOM,
+        )
+        self.content_layout.setSpacing(0)
+        self.content_widget = None
 
         self.hide()
         self._configure_macos_window()
 
     def _apply_frame_stylesheet(self):
-        bg_color = QColor(config.color_background)
-        r, g, b = bg_color.red(), bg_color.green(), bg_color.blue()
-        a = config.background_opacity
-        self.probe_label.setFont(QFont(config.font_family))
         self.frame.setStyleSheet(f"""
-            QFrame {{
-                background-color: rgba({r}, {g}, {b}, {a});
-                color: {config.color_foreground};
-                border-radius: 8px;
-                border: 1px solid #555;
-            }}
-            QLabel {{
-                background-color: transparent;
-                border: none;
-                font-family: "{config.font_family}";
-            }}
-            hr {{
-                border: none;
-                height: 1px;
+            QFrame#popupFrame {{
+                background-color: {POPUP_BG};
+                color: {TEXT_COLOR};
+                border-radius: 16px;
+                border: 1px solid {POPUP_BORDER};
             }}
         """)
-
-    def _calibrate_empirically(self):
-        logger.debug("--- Calibrating Font Metrics Empirically (One-Time) ---")
-
-        # Log font info
-        actual_font = self.display_label.font()
-        font_info = QFontInfo(actual_font)
-        logger.debug(f"[FONT DEBUG] Requested font family: '{config.font_family}' (or default)")
-        logger.debug(f"[FONT DEBUG]   -> Actual resolved font family: '{font_info.family()}'")
-        logger.debug(f"[FONT DEBUG]   -> Actual style name: '{font_info.styleName()}'")
-        logger.debug(f"[FONT DEBUG]   -> Actual point size: {font_info.pointSize()}")
-        logger.debug(f"[FONT DEBUG]   -> Actual pixel size: {font_info.pixelSize()}")
-        logger.debug(f"[FONT DEBUG]   -> Is it bold? {font_info.bold()}")
-
-        margins = self.content_layout.contentsMargins()
-        border_width = 1
-        horizontal_padding = margins.left() + margins.right() + (border_width * 2)
-
-        screen = QApplication.primaryScreen()
-        self.max_content_width = (int(screen.geometry().width() * 0.4)) - horizontal_padding
-
-        header_font = QFont(config.font_family)
-        header_font.setPixelSize(config.font_size_header)
-        header_metrics = QFontMetrics(header_font)
-        self.header_chars_per_line = self._find_chars_for_width(header_metrics, "Header")
-
-        def_font = QFont(config.font_family)
-        def_font.setPixelSize(config.font_size_definitions)
-        def_metrics = QFontMetrics(def_font)
-        self.def_chars_per_line = self._find_chars_for_width(def_metrics, "Definition")
-
-        logger.debug(f"[CALIBRATE] Max content width: {self.max_content_width}px")
-        logger.debug(f"[CALIBRATE] Empirically found {self.header_chars_per_line} header chars/line")
-        logger.debug(f"[CALIBRATE] Empirically found {self.def_chars_per_line} definition chars/line")
-        self.is_calibrated = True
-
-    def _find_chars_for_width(self, metrics: QFontMetrics, name: str) -> int:
-        low = 1
-        high = 500
-        best_fit = 1
-
-        while low <= high:
-            mid = (low + high) // 2
-            if mid == 0: break
-
-            test_string = 'x' * mid
-            current_width = metrics.horizontalAdvance(test_string)
-
-            if current_width <= self.max_content_width:
-                best_fit = mid
-                low = mid + 1
-            else:
-                high = mid - 1
-
-        return best_fit if best_fit > 0 else 50
 
     def set_latest_data(self, data):
         with self._data_lock:
@@ -180,15 +240,9 @@ class Popup(QWidget):
             return self._latest_data
 
     def process_latest_data_loop(self):
-        if not self.is_calibrated:
-            self._calibrate_empirically()
-
         latest_data = self.get_latest_data()
         if latest_data and latest_data != self._last_latest_data:
-            # update popup content
-            full_html, new_size = self._calculate_content_and_size_char_count(latest_data)
-            self.display_label.setText(full_html)
-            self.setFixedSize(new_size)
+            self._set_entries(latest_data)
         self._last_latest_data = latest_data
 
         mouse_pos = QCursor.pos()
@@ -199,150 +253,411 @@ class Popup(QWidget):
         else:
             self.hide_popup()
 
-    def _render_kanji_entry(self, entry: KanjiEntry):
-        # Colors and sizes from config
-        c_word = config.color_highlight_word
-        c_read = config.color_highlight_reading
-        c_text = config.color_foreground
-        fs_head = config.font_size_header
-        fs_def = config.font_size_definitions
-        show_details = config.show_examples or config.show_components
+    def _set_entries(self, entries: Optional[List[DictionaryEntry | KanjiEntry]]):
+        content = QWidget()
+        content.setFixedWidth(CONTENT_WIDTH)
+        content.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        content.setStyleSheet("background: transparent; border: none;")
 
-        readings_str = ", ".join(entry.readings)
-        readings_str = f"[{readings_str}]"
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        header_html = f"""
-                    <span style="font-size:{fs_head}px; color:{c_word}; padding-right: 8px;">{entry.character}</span>
-                    <span style="font-size:{fs_head - 2}px; color:{c_read};"> {readings_str}</span>
-        """
+        shown_vocab_count = 0
+        hidden_vocab_count = 0
+        hidden_sense_count = 0
+        hidden_gloss_count = 0
+        previous_was_vocab = False
+        if entries:
+            for entry in entries:
+                if isinstance(entry, KanjiEntry):
+                    if layout.count() > 0:
+                        layout.addSpacing(8)
+                    layout.addWidget(self._kanji_card(entry))
+                    previous_was_vocab = False
+                    continue
 
-        meanings_str = ", ".join(entry.meanings)
-        meanings_html = f'<span style="font-size:{fs_def}px; color:{c_text};"> {meanings_str}</span>'
-        if not config.compact_mode:
-            meanings_html = f'<span style="font-size:{fs_def}px; color:{c_text};"> [字]</span><div>{meanings_html}</div>'
+                if shown_vocab_count >= MAX_VOCAB_ENTRIES:
+                    hidden_vocab_count += 1
+                    continue
 
-        examples_html = ""
-        if config.show_examples:
-            ex_parts = []
-            for ex in entry.examples:
-                part = (f"<span style='font-size:{fs_head - 2}px; color:{c_word}'>{ex['w']}</span> "
-                        f"<span style='font-size:{fs_def}px; color:{c_read}'>[{ex['r']}]</span> "
-                        f"<span style='font-size:{fs_def}px; color:{c_text}'>{ex['m']}</span>")
-                ex_parts.append(part)
-            if ex_parts:
-                examples_html = f'<div>' \
-                                f'{"; ".join(ex_parts)}</div>'
+                if previous_was_vocab:
+                    layout.addWidget(self._separator())
+                entry_widget, omitted_senses, omitted_glosses = self._dictionary_entry(entry)
+                layout.addWidget(entry_widget)
+                hidden_sense_count += omitted_senses
+                hidden_gloss_count += omitted_glosses
+                shown_vocab_count += 1
+                previous_was_vocab = True
 
-        components_html = ""
-        if config.show_components:
-            comp_parts = []
-            for c in entry.components:
-                part = (f"<span style='font-size:{fs_def}px; color:{c_word}'>{c.get('c', '')}</span> "
-                        f"<span style='font-size:{fs_def}px; color:{c_text}'>{c.get('m', '')}</span>")
-                comp_parts.append(part)
-            if comp_parts:
-                components_html = f'<div>{", ".join(comp_parts)}</div>'
+        footer = self._omission_footer(hidden_vocab_count, hidden_sense_count, hidden_gloss_count)
+        if footer:
+            if layout.count() > 0:
+                layout.addSpacing(7)
+            layout.addWidget(footer)
 
-        return f"""
-        <div style="border: 1px solid {config.color_highlight_word};">
-            {header_html}
-            {meanings_html}
-            {examples_html}
-            {components_html}
-        </div>
-        """
+        self._finalize_fixed_height(content)
+        self._replace_content_widget(content)
 
-    def _calculate_content_and_size_char_count(self, entries: Optional[List[DictionaryEntry]]) -> tuple[
-        Optional[str], Optional[QSize]]:
-        if not self.is_calibrated: return None, None
-        if not entries: return None, None
+    def _replace_content_widget(self, content: QWidget):
+        old_content = self.content_widget
+        if old_content is not None:
+            self.content_layout.removeWidget(old_content)
+            old_content.hide()
+            old_content.deleteLater()
 
-        all_html_parts = []
-        max_ratio = 0.0
+        self.content_widget = content
+        self.content_layout.addWidget(content)
+        self._resize_to_content()
 
-        for i, entry in enumerate(entries):
-            if i > 0:
-                all_html_parts.append('<hr style="margin-top: 0px; margin-bottom: 0px;">')
-
-            if isinstance(entry, KanjiEntry):
-                header_definition = ', '.join(
-                    entry.meanings) if config.show_examples or config.show_components else '[字]'
-                header_text_calc = f"{entry.character} {', '.join(entry.readings)} {header_definition}"
-                max_ratio = max(max_ratio, len(header_text_calc) / self.header_chars_per_line)
-
-                max_ratio = max(max_ratio, 0.7)
-
-                all_html_parts.append(self._render_kanji_entry(entry))
-                continue
-
-            header_text_calc = entry.written_form
-            if entry.reading: header_text_calc += f" [{entry.reading}]"
-            header_ratio = len(header_text_calc) / self.header_chars_per_line
-            max_ratio = max(max_ratio, header_ratio)
-
-            # --- HTML construction ---
-            header_html = f'<span style="color: {config.color_highlight_word}; font-size:{config.font_size_header}px;">{entry.written_form}</span>'
-            if entry.reading: header_html += f' <span style="color: {config.color_highlight_reading}; font-size:{config.font_size_header - 2}px;">[{entry.reading}]</span>'
-            if entry.deconjugation_process and config.show_deconjugation:
-                deconj_str = " ← ".join(p for p in entry.deconjugation_process if p)
-                if deconj_str:
-                    header_html += f' <span style="color:{config.color_foreground}; font-size:{config.font_size_definitions - 2}px; opacity:0.8;">({deconj_str})</span>'
-            if config.show_frequency and entry.freq < 999_999:
-                header_html += f' <span style="color:{config.color_foreground}; font-size:{config.font_size_definitions - 2}px; opacity:0.6;">#{entry.freq}</span>'
-            def_text_parts_calc = []
-            def_text_parts_html = []
-            for idx, sense in enumerate(entry.senses):
-                glosses = sense.get('glosses', [])
-                glosses_str = ""
-                if glosses:
-                    glosses_str = ", ".join(glosses) if config.show_all_glosses else sense.get('glosses')[0]
-                pos_list  = sense.get('pos', [])
-                tags_list = sense.get('tags', [])
-                sense_calc = f"({idx + 1})" if config.show_all_glosses else ""
-                sense_html = f"<b>({idx + 1})</b> " if config.show_all_glosses else ""
-                if config.show_pos and pos_list:
-                    pos_str = f' ({", ".join(pos_list)})'
-                    sense_calc += pos_str
-                    sense_html += f'<span style="color:{config.color_foreground}; opacity:0.7;"><i>{pos_str}</i></span> '
-                if config.show_tags and tags_list:
-                    tags_str = f' [{", ".join(tags_list)}]'
-                    sense_calc += tags_str
-                    sense_html += f'<span style="color:{config.color_foreground}; font-size:{config.font_size_definitions - 2}px; opacity:0.7;">{tags_str}</span> '
-                sense_calc += glosses_str
-                sense_html += glosses_str
-                def_text_parts_calc.append(sense_calc)
-                def_text_parts_html.append(sense_html)
-
-            if config.compact_mode:
-                separator = "; "
-                full_def_text_html = separator.join(def_text_parts_html)
-                def_ratio = len(separator.join(def_text_parts_calc)) / self.def_chars_per_line
-                max_ratio = max(max_ratio, def_ratio)
-            else:
-                separator = "<br>"
-                full_def_text_html = separator.join(def_text_parts_html)
-                for def_text_calc in def_text_parts_calc:
-                    def_ratio = len(def_text_calc) / self.def_chars_per_line
-                    max_ratio = max(max_ratio, def_ratio)
-
-            definitions_html_final = f'{" " if config.compact_mode else "<br>"}<span style="font-size:{config.font_size_definitions}px;">{full_def_text_html}</span>'
-            all_html_parts.append(f"{header_html}{definitions_html_final}")
-
-        optimal_content_width = self.max_content_width * min(1.0, max_ratio)
-        optimal_content_width = max(optimal_content_width, 200)
-
-        full_html = "".join(all_html_parts)
-        self.probe_label.setText(full_html)
-
-        final_height = self.probe_label.heightForWidth(int(optimal_content_width))
+    def _resize_to_content(self):
+        self.content_layout.invalidate()
+        self.content_layout.activate()
 
         margins = self.content_layout.contentsMargins()
-        border_width = 1
-        horizontal_padding = margins.left() + margins.right() + (border_width * 2)
-        vertical_padding = margins.top() + margins.bottom() + (border_width * 2)
+        content_height = self.content_widget.height() if self.content_widget else 0
+        height = margins.top() + content_height + margins.bottom() + 2
+        self.frame.setFixedSize(POPUP_WIDTH, height)
+        self.setFixedSize(POPUP_WIDTH + SHADOW_MARGIN * 2, height + SHADOW_MARGIN * 2)
 
-        final_size = QSize(int(optimal_content_width) + horizontal_padding, final_height + vertical_padding)
-        return full_html, final_size
+    def _finalize_fixed_height(self, widget: QWidget):
+        layout = widget.layout()
+        if layout:
+            layout.invalidate()
+            layout.activate()
+        widget.setFixedHeight(widget.sizeHint().height())
+
+    @staticmethod
+    def _escape(value) -> str:
+        return escape(str(value), quote=False)
+
+    @staticmethod
+    def _contains_html(value: str) -> bool:
+        return "<" in value and ">" in value
+
+    def _gloss_to_html(self, gloss) -> str:
+        text = str(gloss).strip()
+        if self._contains_html(text):
+            return text
+        return self._escape(text)
+
+    def _join_escaped(self, values, separator=", ") -> str:
+        return separator.join(self._escape(value) for value in values if value)
+
+    def _font(self, size: int, weight: QFont.Weight = QFont.Weight.Normal) -> QFont:
+        font = QFont(FONT_FAMILY)
+        font.setPixelSize(size)
+        font.setWeight(weight)
+        return font
+
+    def _plain_label(
+        self,
+        text: str,
+        color: str,
+        size: int,
+        weight: QFont.Weight = QFont.Weight.Normal,
+        max_width: int = CONTENT_WIDTH,
+    ) -> QLabel:
+        label = QLabel(text)
+        label.setTextFormat(Qt.TextFormat.PlainText)
+        label.setFont(self._font(size, weight))
+        label.setStyleSheet(f"color: {color}; background: transparent; border: none; font-family: {FONT_STACK_QSS};")
+        if label.sizeHint().width() > max_width:
+            label.setWordWrap(True)
+            label.setFixedWidth(max_width)
+        else:
+            label.setWordWrap(False)
+        label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        return label
+
+    def _rich_label(self, html: str, color: str, size: int, width: int) -> QLabel:
+        label = QLabel(html)
+        label.setTextFormat(Qt.TextFormat.RichText)
+        label.setWordWrap(True)
+        label.setFont(self._font(size))
+        label.setFixedWidth(width)
+        label.setStyleSheet(
+            f"color: {color}; background: transparent; border: none; "
+            f"font-family: {FONT_STACK_QSS}; font-size: {size}px;"
+        )
+        label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        return label
+
+    def _metadata_label(self, html: str, width: int = CONTENT_WIDTH, color: str = META_COLOR) -> QLabel:
+        return self._rich_label(
+            f'<span style="color:{color}; font-size:{META_FONT_SIZE}px; line-height:125%;">{html}</span>',
+            color,
+            META_FONT_SIZE,
+            width,
+        )
+
+    def _flow_container(
+        self,
+        width: int = CONTENT_WIDTH,
+        h_spacing: int = 7,
+        v_spacing: int = 5,
+    ) -> tuple[QWidget, FlowLayout]:
+        container = QWidget()
+        container.setFixedWidth(width)
+        container.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        container.setStyleSheet("background: transparent; border: none;")
+        layout = FlowLayout(container, h_spacing=h_spacing, v_spacing=v_spacing)
+        return container, layout
+
+    def _finalize_flow_container(self, container: QWidget, layout: FlowLayout, width: int):
+        layout.invalidate()
+        height = layout.heightForWidth(width)
+        container.setFixedSize(width, height)
+
+    @staticmethod
+    def _unique_sense_values(senses: list, key: str) -> list[str]:
+        values = []
+        seen = set()
+        for sense in senses:
+            for value in sense.get(key, []):
+                if value and value not in seen:
+                    seen.add(value)
+                    values.append(value)
+        return values
+
+    def _entry_metadata(self, entry: DictionaryEntry) -> tuple[list[str], str]:
+        metadata = []
+        shown_senses = []
+        for sense in entry.senses:
+            if sense.get('glosses'):
+                shown_senses.append(sense)
+            if len(shown_senses) >= MAX_SENSES_PER_ENTRY:
+                break
+
+        pos_values = self._unique_sense_values(shown_senses, 'pos')
+        tag_values = self._unique_sense_values(shown_senses, 'tags')
+        if pos_values:
+            metadata.append(" · ".join(pos_values))
+        metadata.extend(tag_values)
+
+        if entry.freq < DEFAULT_FREQ:
+            metadata.append(f"#{entry.freq}")
+
+        deconj = ""
+        if entry.deconjugation_process:
+            steps = [p for p in entry.deconjugation_process if p]
+            if steps and steps[0] == entry.written_form:
+                steps = steps[1:]
+            deconj = " · ".join(steps)
+
+        return metadata, deconj
+
+    def _metadata_html(self, values: list[str]) -> str:
+        return f' <span style="color:{META_LABEL_COLOR};">·</span> '.join(
+            self._escape(value) for value in values if value
+        )
+
+    def _deconjugation_html(self, value: str) -> str:
+        return (
+            f'<span style="color:{META_LABEL_COLOR}; font-weight:700;">inflected</span>'
+            f' <span style="color:{META_LABEL_COLOR};">·</span> {self._escape(value)}'
+        )
+
+    @staticmethod
+    def _plural(count: int, singular: str, plural: str) -> str:
+        unit = singular if count == 1 else plural
+        return f"{count} {unit}"
+
+    def _omission_footer(
+        self,
+        hidden_vocab_count: int,
+        hidden_sense_count: int,
+        hidden_gloss_count: int,
+    ) -> QLabel | None:
+        parts = []
+        if hidden_vocab_count:
+            parts.append(self._plural(hidden_vocab_count, "more entry", "more entries"))
+        if hidden_sense_count:
+            parts.append(self._plural(hidden_sense_count, "more sense", "more senses"))
+        if hidden_gloss_count:
+            parts.append(self._plural(hidden_gloss_count, "more gloss", "more glosses"))
+        if not parts:
+            return None
+        return self._metadata_label(f'+ {" · ".join(parts)}')
+
+    def _entry_definition_html(self, entry: DictionaryEntry) -> tuple[str, int, int]:
+        sense_parts = []
+        hidden_gloss_count = 0
+        for sense in entry.senses:
+            glosses = [self._gloss_to_html(gloss) for gloss in sense.get('glosses', []) if gloss]
+            if not glosses:
+                continue
+
+            shown_glosses = glosses[:MAX_GLOSSES_PER_SENSE]
+            hidden_gloss_count += max(0, len(glosses) - MAX_GLOSSES_PER_SENSE)
+            sense_parts.append(", ".join(shown_glosses))
+
+        hidden_sense_count = max(0, len(sense_parts) - MAX_SENSES_PER_ENTRY)
+        sense_parts = sense_parts[:MAX_SENSES_PER_ENTRY]
+
+        if len(sense_parts) <= 1:
+            return (sense_parts[0] if sense_parts else ""), hidden_sense_count, hidden_gloss_count
+
+        rows = []
+        for index, sense_text in enumerate(sense_parts, 1):
+            rows.append(
+                f'<span style="color:{SENSE_NUMBER_COLOR}; font-weight:800;">{index}</span>'
+                f'&nbsp;{sense_text}'
+            )
+        return "<br>".join(rows), hidden_sense_count, hidden_gloss_count
+
+    def _dictionary_entry(self, entry: DictionaryEntry) -> tuple[QWidget, int, int]:
+        entry_widget = QWidget()
+        entry_widget.setFixedWidth(CONTENT_WIDTH)
+        entry_widget.setStyleSheet("background: transparent; border: none;")
+
+        layout = QVBoxLayout(entry_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        row, row_layout = self._flow_container(h_spacing=8, v_spacing=2)
+        row_layout.addWidget(self._plain_label(
+            entry.written_form,
+            WORD_COLOR,
+            WORD_FONT_SIZE,
+            QFont.Weight.ExtraBold,
+        ))
+        if entry.reading:
+            row_layout.addWidget(self._plain_label(
+                f"[{entry.reading}]",
+                READING_COLOR,
+                READING_FONT_SIZE,
+                QFont.Weight.DemiBold,
+            ))
+        self._finalize_flow_container(row, row_layout, CONTENT_WIDTH)
+        layout.addWidget(row)
+
+        metadata, deconj = self._entry_metadata(entry)
+        if metadata:
+            layout.addSpacing(1)
+            layout.addWidget(self._metadata_label(self._metadata_html(metadata)))
+        if deconj:
+            layout.addSpacing(2)
+            layout.addWidget(self._metadata_label(self._deconjugation_html(deconj), color=DECONJ_COLOR))
+
+        definition_html, hidden_sense_count, hidden_gloss_count = self._entry_definition_html(entry)
+        if definition_html:
+            layout.addSpacing(5 if metadata or deconj else 3)
+            layout.addWidget(self._rich_label(definition_html, DEFINITION_COLOR, DEFINITION_FONT_SIZE, CONTENT_WIDTH))
+
+        self._finalize_fixed_height(entry_widget)
+        return entry_widget, hidden_sense_count, hidden_gloss_count
+
+    def _separator(self) -> QWidget:
+        container = QWidget()
+        container.setFixedWidth(CONTENT_WIDTH)
+        container.setFixedHeight(13)
+        container.setStyleSheet("background: transparent; border: none;")
+
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 6, 0, 6)
+        layout.setSpacing(0)
+
+        line = QFrame()
+        line.setFixedHeight(1)
+        line.setStyleSheet(f"background-color: {SEPARATOR_COLOR}; border: none;")
+        layout.addWidget(line)
+        return container
+
+    def _kanji_card(self, entry: KanjiEntry) -> QFrame:
+        card = QFrame()
+        card.setObjectName("kanjiCard")
+        card.setFixedWidth(CONTENT_WIDTH)
+        card.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        card.setStyleSheet(f"""
+            QFrame#kanjiCard {{
+                background-color: {KANJI_CARD_BG};
+                border: 1px solid {KANJI_CARD_BORDER};
+                border-radius: 10px;
+            }}
+        """)
+
+        layout = QHBoxLayout(card)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(9)
+
+        glyph = QFrame()
+        glyph.setFixedSize(48, 52)
+        glyph.setStyleSheet(f"background-color: {KANJI_GLYPH_BG}; border: none; border-radius: 9px;")
+        glyph_layout = QVBoxLayout(glyph)
+        glyph_layout.setContentsMargins(0, 0, 0, 1)
+        glyph_layout.setSpacing(0)
+        glyph_label = self._plain_label(
+            entry.character,
+            WORD_COLOR,
+            KANJI_GLYPH_FONT_SIZE,
+            QFont.Weight.ExtraBold,
+            48,
+        )
+        glyph_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        glyph_layout.addWidget(glyph_label, 0, Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(glyph, 0, Qt.AlignmentFlag.AlignTop)
+
+        right_width = CONTENT_WIDTH - 16 - 48 - 9
+        details = QWidget()
+        details.setFixedWidth(right_width)
+        details.setStyleSheet("background: transparent; border: none;")
+        details_layout = QVBoxLayout(details)
+        details_layout.setContentsMargins(0, 0, 0, 0)
+        details_layout.setSpacing(2)
+
+        readings = self._join_escaped(entry.readings)
+        if readings:
+            details_layout.addWidget(self._rich_label(
+                f'<span style="color:{READING_COLOR}; font-weight:700;">[{readings}]</span>',
+                READING_COLOR,
+                READING_FONT_SIZE,
+                right_width,
+            ))
+
+        meanings = self._join_escaped(entry.meanings)
+        if meanings:
+            details_layout.addWidget(self._rich_label(meanings, DEFINITION_COLOR, DEFINITION_FONT_SIZE, right_width))
+
+        examples_html = self._kanji_examples_html(entry)
+        if examples_html:
+            details_layout.addWidget(self._rich_label(examples_html, MUTED_COLOR, DETAIL_FONT_SIZE, right_width))
+
+        components_html = self._kanji_components_html(entry)
+        if components_html:
+            details_layout.addWidget(self._rich_label(components_html, MUTED_COLOR, DETAIL_FONT_SIZE, right_width))
+
+        layout.addWidget(details, 1)
+        self._finalize_fixed_height(card)
+        return card
+
+    def _kanji_examples_html(self, entry: KanjiEntry) -> str:
+        parts = []
+        for ex in entry.examples:
+            word = self._escape(ex.get('w', ''))
+            reading = self._escape(ex.get('r', ''))
+            meaning = self._escape(ex.get('m', ''))
+            if word or reading or meaning:
+                parts.append(
+                    f'<span style="color:{WORD_COLOR}; font-weight:700;">{word}</span> '
+                    f'<span style="color:{READING_COLOR};">[{reading}]</span> {meaning}'
+                )
+        if not parts:
+            return ""
+        return f'<span style="color:{META_LABEL_COLOR}; font-weight:700;">ex</span> {"; ".join(parts)}'
+
+    def _kanji_components_html(self, entry: KanjiEntry) -> str:
+        parts = []
+        for component in entry.components:
+            char = self._escape(component.get('c', ''))
+            meaning = self._escape(component.get('m', ''))
+            if meaning:
+                parts.append(f'<span style="color:{WORD_COLOR};">{char}</span> {meaning}')
+            elif char:
+                parts.append(f'<span style="color:{WORD_COLOR};">{char}</span>')
+        if not parts:
+            return ""
+        return f'<span style="color:{META_LABEL_COLOR}; font-weight:700;">parts</span> {" · ".join(parts)}'
 
     def move_to(self, x, y):
         cursor_point = QPoint(x, y)
@@ -351,36 +666,31 @@ class Popup(QWidget):
         popup_size = self.size()
         offset = 15
 
-        # --- Positioning logic based on mode ---
         mode = config.popup_position_mode
 
         if mode == 'visual_novel_mode':
-            # --- Vertical Position (VN Mode) ---
             screen_height = screen_geo.height()
             cursor_y_in_screen = y - screen_geo.top()
             is_below = True
-            if cursor_y_in_screen > (2 * screen_height / 3):  # Lower third
-                is_below = False  # Place above
-            elif cursor_y_in_screen < (screen_height / 3):  # Upper third
-                is_below = True  # Place below
-            else:  # Middle third
+            if cursor_y_in_screen > (2 * screen_height / 3):
+                is_below = False
+            elif cursor_y_in_screen < (screen_height / 3):
+                is_below = True
+            else:
                 is_below = cursor_y_in_screen < (screen_height / 2)
             final_y = (y + offset) if is_below else (y - popup_size.height() - offset)
 
-            # Vertical Push
-            if final_y < screen_geo.top(): final_y = screen_geo.top()
+            if final_y < screen_geo.top():
+                final_y = screen_geo.top()
             if final_y + popup_size.height() > screen_geo.bottom():
                 final_y = screen_geo.bottom() - popup_size.height()
 
-            # --- Horizontal Position (VN Mode) ---
             screen_width = screen_geo.width()
             cursor_x_in_screen = x - screen_geo.left()
-            # Define anchor points for interpolation
             pos_right = x + offset
             pos_center = x - popup_size.width() / 2.0
             pos_left = x - popup_size.width() - offset
 
-            # Interpolate smoothly between right, center, and left alignment
             if cursor_x_in_screen < screen_width / 2.0:
                 ratio = cursor_x_in_screen / (screen_width / 2.0)
                 final_x = pos_right * (1 - ratio) + pos_center * ratio
@@ -389,41 +699,38 @@ class Popup(QWidget):
                 final_x = pos_center * (1 - ratio) + pos_left * ratio
 
         elif mode == 'flip_horizontally':
-            # X: Flip, Y: Push
             preferred_x = x + offset
             final_x = preferred_x if preferred_x + popup_size.width() <= screen_geo.right() else x - popup_size.width() - offset
 
             final_y = y + offset
-            if final_y + popup_size.height() > screen_geo.bottom(): final_y = screen_geo.bottom() - popup_size.height()
-            if final_y < screen_geo.top(): final_y = screen_geo.top()
+            if final_y + popup_size.height() > screen_geo.bottom():
+                final_y = screen_geo.bottom() - popup_size.height()
+            if final_y < screen_geo.top():
+                final_y = screen_geo.top()
 
         elif mode == 'flip_vertically':
-            # X: Push, Y: Flip
             final_x = x + offset
-            if final_x + popup_size.width() > screen_geo.right(): final_x = screen_geo.right() - popup_size.width()
-            if final_x < screen_geo.left(): final_x = screen_geo.left()
+            if final_x + popup_size.width() > screen_geo.right():
+                final_x = screen_geo.right() - popup_size.width()
+            if final_x < screen_geo.left():
+                final_x = screen_geo.left()
 
             preferred_y = y + offset
             final_y = preferred_y if preferred_y + popup_size.height() <= screen_geo.bottom() else y - popup_size.height() - offset
 
-        else:  # 'flip_both'
-            # X: Flip
+        else:
             preferred_x = x + offset
             final_x = preferred_x if preferred_x + popup_size.width() <= screen_geo.right() else x - popup_size.width() - offset
 
-            # Y: Flip
             preferred_y = y + offset
             final_y = preferred_y if preferred_y + popup_size.height() <= screen_geo.bottom() else y - popup_size.height() - offset
 
-        # Final clamp to ensure the popup is always fully visible.
-        # This acts as a safeguard against any edge cases.
         final_x = max(screen_geo.left(), min(final_x, screen_geo.right() - popup_size.width()))
         final_y = max(screen_geo.top(), min(final_y, screen_geo.bottom() - popup_size.height()))
 
         self.move(int(final_x), int(final_y))
 
     def hide_popup(self):
-        # logger.debug(f"hide_popup triggered while visibility:{self.is_visible}")
         if not self.is_visible:
             return
         self.hide()
@@ -436,7 +743,7 @@ class Popup(QWidget):
 
         self.is_visible = False
         self._resume_auto_paused_media()
-        QTimer.singleShot(50, lambda: self._release_lock_safely())  # prevent popup from being screenshotted
+        QTimer.singleShot(50, lambda: self._release_lock_safely())
         QTimer.singleShot(0, self._restore_focus_on_mac)
 
     def _release_lock_safely(self):
@@ -445,7 +752,6 @@ class Popup(QWidget):
         logger.debug("...successfully released lock by hide_popup")
 
     def show_popup(self):
-        # logger.debug(f"show_popup triggered while visibility:{self.is_visible}")
         if self.is_visible:
             return
 
@@ -508,7 +814,7 @@ class Popup(QWidget):
             if ns_window:
                 ns_window.orderFrontRegardless()
         except Exception as e:
-            logger.warning(f"Failed to order macOS popup window front: {e}")
+            logger.warning(f"Failed to order macOS window front: {e}")
 
     def _store_active_app_on_mac(self):
         if not NSWorkspace:
@@ -536,8 +842,6 @@ class Popup(QWidget):
             self._previous_active_app_on_mac = None
 
     def reapply_settings(self):
-        logger.debug("Popup: Re-applying settings and triggering font recalibration.")
+        logger.debug("Popup: Re-applying fixed popup styling.")
         self._apply_frame_stylesheet()
-        # By setting is_calibrated to False, the main loop will automatically
-        # run _calibrate_empirically() again with the new font settings.
-        self.is_calibrated = False
+        self._resize_to_content()

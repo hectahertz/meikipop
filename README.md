@@ -20,11 +20,11 @@ MeikiKai renames the app, Python package, CLI, support files, and build artifact
 - **Screen-wide lookup:** works with games, manga, videos, PDFs, websites, and other apps because it reads pixels from the selected screen.
 - **Display selection:** OCR a full display or all displays.
 - **Always-on auto scan:** keeps OCR results warm in the background for responsive hover lookups.
-- **Hover popup:** dictionary entries appear next to the cursor, with configurable positioning including a visual-novel-friendly mode.
+- **Hover popup:** dictionary entries appear next to the cursor in a compact bundled-data layout, with configurable positioning including a visual-novel-friendly mode.
 - **Local OCR:** uses fast local `meikiocr` for Japanese text recognition.
 - **JMdict/KANJIDIC dictionary:** includes word lookup, deconjugation, frequency ranking, kanji entries, components, and examples.
 - **Yomitan imports:** replace the bundled dictionary with one or more Yomitan/Yomichan dictionaries.
-- **Customizable appearance:** themes, colors, opacity, font, compact mode, visible fields, and kanji display options.
+- **Bundled dictionary details:** word lookup, deconjugation, frequency ranking, POS/tags, glosses, kanji readings, examples, and components are shown without popup content toggles.
 
 ## Requirements
 
@@ -98,9 +98,7 @@ Imports overwrite `~/Library/Application Support/meikikai/dictionary.pkl`.
 Open settings from the menu bar icon. Useful options include:
 
 - maximum lookup length and scan interval
-- popup position mode, compact mode, and media auto-pause
-- visible dictionary fields: glosses, deconjugation, part of speech, tags, frequency, kanji entries, examples, and components
-- theme, opacity, font, font sizes, and colors
+- popup position mode and media auto-pause
 
 ## Building the macOS app
 
