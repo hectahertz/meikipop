@@ -358,14 +358,14 @@ class SettingsDialog(QDialog):
         shortcut_label.setObjectName("infoShortcut")
         shortcut_label.setTextFormat(Qt.TextFormat.PlainText)
         shortcut_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        row_layout.addWidget(shortcut_label, 1, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        row_layout.addWidget(shortcut_label, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         label = QLabel(text)
         label.setObjectName("infoText")
         label.setTextFormat(Qt.TextFormat.PlainText)
         label.setWordWrap(True)
-        label.setFixedWidth(self.anki_connect_url_edit.width())
-        row_layout.addWidget(label, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        row_layout.addWidget(label, 1, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         return row
 
     def _separator(self):
