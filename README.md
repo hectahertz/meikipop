@@ -17,6 +17,15 @@ Forked from [rtr46/meikipop](https://github.com/rtr46/meikipop).
 - **Optional media auto-pause** while dictionary results are visible.
 - **Direct Anki export** through AnkiConnect with automatic deck/note type setup and optional screenshot images.
 
+## Direct Anki export
+
+Create Anki recognition cards from the visible top vocabulary entry, with popup-style details and optional cropped screenshots.
+
+<p align="center">
+  <img width="496" alt="MeikiKai Anki card back example" src="design/card-back.png"><br>
+  <sub>Screenshot content from <a href="https://www.youtube.com/watch?v=FV1uXLlfN20">“1 hour Japanese immersion: Comprehensible Listening Practice! N5-N3 #149”</a> by <a href="https://www.youtube.com/@kensanokaeri">けんさんおかえり Japanese</a>.</sub>
+</p>
+
 ## Features
 
 - Works anywhere text is visible: games, visual novels, manga, videos, PDFs, websites, and more.
@@ -100,11 +109,6 @@ Export behavior:
 - Includes expression, reading, lookup text, highlighted sentence, optional screenshot, definitions, part of speech, tags, frequency, deconjugation, kanji info, and entry ID fields.
 - Adds tags `meikikai` and `meikikai-vocab`.
 - Blocks duplicate cards by the first `Key` field.
-
-<p align="center">
-  <img width="496" alt="MeikiKai Anki card back example" src="design/card-back.png"><br>
-  <sub>Screenshot content from <a href="https://www.youtube.com/watch?v=FV1uXLlfN20">“1 hour Japanese immersion: Comprehensible Listening Practice! N5-N3 #149”</a> by <a href="https://www.youtube.com/@kensanokaeri">けんさんおかえり Japanese</a>.</sub>
-</p>
 
 ## Dictionary commands
 
