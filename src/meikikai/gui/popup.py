@@ -24,6 +24,7 @@ from meikikai.config.config import config
 from meikikai.dictionary.customdict import DEFAULT_FREQ
 from meikikai.dictionary.lookup import DictionaryEntry, KanjiEntry, LookupResult
 from meikikai.gui.input import pause_macos_media_if_playing, play_macos_media
+from meikikai.utils.capture_state import is_capture_interaction_active
 
 try:
     import objc
@@ -172,6 +173,7 @@ class Popup(QWidget):
         self._data_lock = threading.Lock()
         self._previous_active_app_on_mac = None
         self._auto_pause_media_triggered = False
+        self._auto_pause_media_resume_deferred = False
 
         self.shared_state = shared_state
 
@@ -797,7 +799,8 @@ class Popup(QWidget):
         self._order_macos_window_front()
 
     def _pause_media_for_popup(self):
-        self._auto_pause_media_triggered = False
+        if self._auto_pause_media_triggered:
+            return
         if not config.auto_pause_media:
             return
 
@@ -806,12 +809,30 @@ class Popup(QWidget):
 
     def _resume_auto_paused_media(self):
         if not self._auto_pause_media_triggered:
+            self._auto_pause_media_resume_deferred = False
+            return
+        if is_capture_interaction_active():
+            self._schedule_deferred_auto_resume()
+            return
+        if self.is_visible:
+            self._auto_pause_media_resume_deferred = False
             return
 
         try:
             play_macos_media()
         finally:
             self._auto_pause_media_triggered = False
+            self._auto_pause_media_resume_deferred = False
+
+    def _schedule_deferred_auto_resume(self):
+        if self._auto_pause_media_resume_deferred:
+            return
+        self._auto_pause_media_resume_deferred = True
+        QTimer.singleShot(100, self._deferred_auto_resume_tick)
+
+    def _deferred_auto_resume_tick(self):
+        self._auto_pause_media_resume_deferred = False
+        self._resume_auto_paused_media()
 
     def _macos_window(self):
         if not objc:

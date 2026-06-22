@@ -3,6 +3,7 @@ from PyQt6.QtCore import QLocale, Qt
 from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtWidgets import (
     QAbstractSpinBox,
+    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -92,6 +93,9 @@ class SettingsDialog(QDialog):
         self.anki_connect_url_edit.setPlaceholderText("http://127.0.0.1:8765")
         self._prepare_text_control(self.anki_connect_url_edit, 246)
 
+        self.anki_capture_screenshot_check = QCheckBox()
+        self.anki_capture_screenshot_check.setChecked(config.anki_capture_screenshot)
+
         main_layout.addWidget(self._section(
             "Lookup",
             [self._setting_row(
@@ -126,6 +130,11 @@ class SettingsDialog(QDialog):
                     "AnkiConnect URL",
                     "Local AnkiConnect endpoint used for direct card creation.",
                     self.anki_connect_url_edit,
+                ),
+                self._setting_row(
+                    "Capture screenshot",
+                    "Prompt for a native macOS crop when adding a card. Esc adds the card without an image.",
+                    self.anki_capture_screenshot_check,
                 ),
                 self._info_row(
                     "Ctrl+Shift+M",
@@ -209,6 +218,20 @@ class SettingsDialog(QDialog):
             QDoubleSpinBox:focus,
             QLineEdit:focus {{
                 border-color: rgba(10, 132, 255, 190);
+            }}
+            QCheckBox::indicator {{
+                width: 18px;
+                height: 18px;
+            }}
+            QCheckBox::indicator:unchecked {{
+                background-color: rgba(237, 241, 247, 13);
+                border: 1px solid rgba(237, 241, 247, 40);
+                border-radius: 5px;
+            }}
+            QCheckBox::indicator:checked {{
+                background-color: #0a84ff;
+                border: 1px solid rgba(10, 132, 255, 220);
+                border-radius: 5px;
             }}
         """)
 
@@ -317,6 +340,7 @@ class SettingsDialog(QDialog):
         selected_friendly_name = self.popup_position_combo.currentText()
         config.popup_position_mode = self.popup_mode_map.get(selected_friendly_name, "visual_novel_mode")
         config.anki_connect_url = self.anki_connect_url_edit.text().strip() or "http://127.0.0.1:8765"
+        config.anki_capture_screenshot = self.anki_capture_screenshot_check.isChecked()
         config.save()
 
         self.popup_window.reapply_settings()

@@ -1,6 +1,8 @@
 # meikikai/anki/connect.py
+import base64
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 import requests
@@ -14,6 +16,8 @@ from meikikai.anki.cards import (
 )
 
 logger = logging.getLogger(__name__)
+
+LEGACY_FIELD_NAMES = [field for field in FIELD_NAMES if field != "Screenshot"]
 
 ANKI_CONNECT_VERSION = 6
 DEFAULT_TIMEOUT_SECONDS = 2.5
@@ -185,6 +189,15 @@ class AnkiConnectClient:
                 raise DuplicateNoteError(e.message) from e
             raise
 
+    def store_media_file(self, filename: str, path: str) -> str:
+        data = base64.b64encode(Path(path).read_bytes()).decode("ascii")
+        stored_filename = self.request("storeMediaFile", {
+            "filename": filename,
+            "data": data,
+            "deleteExisting": False,
+        })
+        return str(stored_filename or filename)
+
 
 def setup_meikikai_note_type(client: AnkiConnectClient, deck_name: str, model_name: str):
     client.version()
@@ -213,6 +226,10 @@ def setup_meikikai_note_type(client: AnkiConnectClient, deck_name: str, model_na
                 f"Could not safely repair empty Anki note type '{model_name}'."
             )
 
+    if any(field not in fields for field in FIELD_NAMES):
+        logger.info("Adding missing fields to Anki note type '%s'.", model_name)
+        _add_missing_model_fields(client, model_name, fields)
+
     template_name = _template_name_to_update(client, model_name, has_notes)
     client.update_model_templates(model_name, template_name)
     client.update_model_styling(model_name)
@@ -232,7 +249,20 @@ def make_note(deck_name: str, model_name: str, fields: dict[str, str]) -> AnkiNo
 
 
 def _fields_compatible(fields: list[str]) -> bool:
-    return bool(fields) and fields[0] == "Key" and all(field in fields for field in FIELD_NAMES)
+    if not fields or fields[0] != "Key":
+        return False
+    return (
+        all(field in fields for field in FIELD_NAMES)
+        or all(field in fields for field in LEGACY_FIELD_NAMES)
+    )
+
+
+def _add_missing_model_fields(client: AnkiConnectClient, model_name: str, fields: list[str]):
+    current = list(fields)
+    for field_name in FIELD_NAMES:
+        if field_name not in current:
+            client.model_field_add(model_name, field_name, len(current))
+            current.append(field_name)
 
 
 def _repair_empty_model_fields(client: AnkiConnectClient, model_name: str, fields: list[str]):

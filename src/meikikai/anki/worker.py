@@ -2,6 +2,10 @@
 import logging
 import queue
 import threading
+from dataclasses import dataclass
+from html import escape
+from pathlib import Path
+from uuid import uuid4
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
@@ -21,6 +25,12 @@ from meikikai.config.config import config
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class AnkiExportRequest:
+    lookup_data: object
+    screenshot_path: str | None = None
+
+
 class AnkiExportNotifier(QObject):
     message = pyqtSignal(str, str, str)
 
@@ -36,8 +46,8 @@ class AnkiExportWorker(threading.Thread):
         self._client = AnkiConnectClient(anki_url)
         self._setup_complete = False
 
-    def submit(self, lookup_data):
-        self._queue.put(lookup_data)
+    def submit(self, lookup_data, screenshot_path: str | None = None):
+        self._queue.put(AnkiExportRequest(lookup_data, screenshot_path))
 
     def stop(self):
         self._queue.put(None)
@@ -45,11 +55,11 @@ class AnkiExportWorker(threading.Thread):
     def run(self):
         logger.debug("Anki export worker started.")
         while True:
-            lookup_data = self._queue.get()
-            if lookup_data is None:
+            request = self._queue.get()
+            if request is None:
                 break
             try:
-                self._export(lookup_data)
+                self._export(request)
             except Exception:
                 logger.exception("Unexpected Anki export failure.")
                 self._notify(
@@ -57,10 +67,13 @@ class AnkiExportWorker(threading.Thread):
                     "Unexpected error while exporting to Anki. Check the MeikiKai log for details.",
                     "critical",
                 )
+            finally:
+                if request.screenshot_path:
+                    Path(request.screenshot_path).unlink(missing_ok=True)
         logger.debug("Anki export worker stopped.")
 
-    def _export(self, lookup_data):
-        payload = build_vocab_card_payload(lookup_data)
+    def _export(self, request: AnkiExportRequest):
+        payload = build_vocab_card_payload(request.lookup_data)
         if not payload:
             self._notify("Anki export skipped", "No vocabulary entry is visible to export.", "warning")
             return
@@ -73,6 +86,9 @@ class AnkiExportWorker(threading.Thread):
 
             if note_exists_for_key(self._client, self.model_name, payload.key):
                 raise DuplicateNoteError("MeikiKai duplicate key already exists.")
+
+            if request.screenshot_path:
+                self._attach_screenshot(payload.fields, request.screenshot_path)
 
             note = make_note(self.deck_name, self.model_name, payload.fields)
             self._client.add_note(note)
@@ -96,6 +112,11 @@ class AnkiExportWorker(threading.Thread):
             return
 
         self._notify("Added to Anki", f"{payload.expression} → {self.deck_name}", "success")
+
+    def _attach_screenshot(self, fields: dict[str, str], screenshot_path: str):
+        filename = f"meikikai_{uuid4().hex}.png"
+        stored_filename = self._client.store_media_file(filename, screenshot_path) or filename
+        fields["Screenshot"] = f'<img src="{escape(stored_filename)}">'
 
     def _sync_config(self):
         if config.anki_connect_url == self.anki_url:

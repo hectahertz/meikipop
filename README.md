@@ -93,7 +93,8 @@ Export behavior:
 - Creates deck `MeikiKai Mining` automatically.
 - Creates or updates note type `MeikiKai Vocab` automatically when safe.
 - Uses a recognition card with the sentence on the front and popup-style details on the back.
-- Includes expression, reading, lookup text, highlighted sentence, definitions, part of speech, tags, frequency, deconjugation, kanji info, and entry ID fields.
+- By default, opens the native macOS screenshot cropper before adding the card; pressing Esc adds the card without an image. This can be disabled in Settings.
+- Includes expression, reading, lookup text, highlighted sentence, optional screenshot, definitions, part of speech, tags, frequency, deconjugation, kanji info, and entry ID fields.
 - Adds tags `meikikai` and `meikikai-vocab`.
 - Blocks duplicate cards by the first `Key` field.
 

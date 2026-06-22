@@ -37,6 +37,7 @@ FIELD_NAMES = [
     "LookupText",
     "Sentence",
     "SentenceHighlighted",
+    "Screenshot",
     "PrimaryDefinition",
     "Definitions",
     "PartOfSpeech",
@@ -321,6 +322,7 @@ BACK_TEMPLATE = """
 <div class="mk-back-layout mk-card-root">
   <div class="mk-card mk-front-card mk-back-sentence-card">
     <div class="mk-front-sentence">{{SentenceHighlighted}}</div>
+    {{#Screenshot}}<div class="mk-screenshot">{{Screenshot}}</div>{{/Screenshot}}
   </div>
 
   <div class="mk-card mk-popup-card">
@@ -386,6 +388,20 @@ CARD_CSS = f"""
 
 .mk-back-sentence-card {{
   margin-bottom: 14px;
+}}
+
+.mk-screenshot {{
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(237, 241, 247, 0.13);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+}}
+
+.mk-screenshot img {{
+  display: block;
+  max-width: 100%;
+  height: auto;
 }}
 
 .mk-front-sentence {{

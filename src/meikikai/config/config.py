@@ -30,7 +30,8 @@ class Config:
             'auto_scan_interval_seconds': 0.5,
             'auto_pause_media': False,
             'popup_position_mode': 'visual_novel_mode',
-            'anki_connect_url': 'http://127.0.0.1:8765'
+            'anki_connect_url': 'http://127.0.0.1:8765',
+            'anki_capture_screenshot': True,
         }
     }
 

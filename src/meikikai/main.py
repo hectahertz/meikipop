@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import QApplication
 
 from meikikai.utils.logger import setup_logging
 from meikikai.anki.cards import DECK_NAME, MODEL_NAME
+from meikikai.anki.screenshot import capture_interactive_png
 from meikikai.anki.worker import AnkiExportNotifier, AnkiExportWorker
 from meikikai.config.config import APP_NAME, APP_VERSION, config
 from meikikai.dictionary.lookup import Lookup
@@ -18,6 +19,7 @@ from meikikai.gui.tray import TrayIcon
 from meikikai.ocr.hit_scan import HitScanner
 from meikikai.ocr.ocr import OcrProcessor
 from meikikai.screenshot.screenmanager import ScreenManager
+from meikikai.utils.capture_state import begin_capture_interaction, end_capture_interaction
 from meikikai.utils.latest_queue import LatestValueQueue
 from meikikai.utils.paths import paths
 
@@ -112,10 +114,42 @@ def run_gui():
         anki_notifier,
     )
 
+    anki_capture_lock = threading.Lock()
+
     def export_latest_to_anki():
         export_data = popup_window.get_latest_export_data()
-        if export_data is not None:
+        if export_data is None:
+            return
+
+        if not config.anki_capture_screenshot:
             anki_worker.submit(export_data)
+            return
+
+        if not anki_capture_lock.acquire(blocking=False):
+            anki_notifier.message.emit(
+                "Screenshot capture active",
+                "Finish or cancel the current crop before creating another Anki card.",
+                "warning",
+            )
+            return
+
+        begin_capture_interaction()
+
+        def capture_and_submit():
+            try:
+                screenshot_path = capture_interactive_png()
+                anki_worker.submit(export_data, screenshot_path)
+            finally:
+                end_capture_interaction()
+                anki_capture_lock.release()
+
+        capture_thread = threading.Thread(target=capture_and_submit, daemon=True, name="AnkiScreenshotCapture")
+        try:
+            capture_thread.start()
+        except Exception:
+            end_capture_interaction()
+            anki_capture_lock.release()
+            raise
 
     anki_hotkeys = GlobalHotkeyListener(export_latest_to_anki)
 
