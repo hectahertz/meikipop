@@ -38,6 +38,7 @@ Create Anki recognition cards from the visible top vocabulary entry, with popup-
 - Stays visible across macOS Spaces and fullscreen apps.
 - Runs from the macOS menu bar with pause, settings, screen selection, and quit controls.
 - Can pause currently playing macOS media while the popup is visible, then resume it afterward.
+- Copies the visible top vocabulary expression to the clipboard with `Ctrl+Shift+C`.
 - Adds the visible top vocabulary entry directly to Anki through AnkiConnect, with optional cropped screenshots on cards.
 
 ## Requirements
@@ -78,7 +79,8 @@ The default dictionary is downloaded on first run if `dictionary.pkl` is missing
 1. Start `MeikiKai.app` or run `meikikai`.
 2. Grant macOS permissions when prompted.
 3. Move the mouse over Japanese text on the selected screen.
-4. Use the menu bar icon to pause, enable media auto-pause, open settings, choose the scan screen, or quit.
+4. Press `Ctrl+Shift+C` to copy the visible top vocabulary expression, or `Ctrl+Shift+M` to export it to Anki.
+5. Use the menu bar icon to pause, enable media auto-pause, open settings, choose the scan screen, or quit.
 
 ### Settings
 
@@ -166,7 +168,7 @@ Optionally set `MEIKIKAI_CODESIGN_IDENTITY` in `.env` to re-sign the local build
 ## Troubleshooting
 
 - If OCR does not work, confirm Screen Recording permission for MeikiKai and relaunch the app.
-- If the Anki hotkey or media automation does not work, confirm Accessibility permission and relaunch.
+- If global hotkeys or media automation do not work, confirm Accessibility permission and relaunch.
 - After rebuilding or re-signing the app, macOS permissions can become stale. Remove MeikiKai from the affected permission list, add it again, then relaunch.
 - If Anki export says Anki is unavailable, open Anki with AnkiConnect enabled and try `Ctrl+Shift+M` again.
 - Check logs at `~/Library/Logs/MeikiKai/meikikai.log`.

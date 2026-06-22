@@ -4,6 +4,7 @@ import signal
 import sys
 import threading
 
+from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication
 
@@ -82,6 +83,20 @@ class SharedState:
         self.screen_lock = threading.RLock()
 
 
+class ClipboardController(QObject):
+    copy_requested = pyqtSignal(str)
+    message = pyqtSignal(str, str, str)
+
+    def __init__(self):
+        super().__init__()
+        self.copy_requested.connect(self._copy_to_clipboard)
+
+    @pyqtSlot(str)
+    def _copy_to_clipboard(self, text: str):
+        QApplication.clipboard().setText(text)
+        self.message.emit("Copied to clipboard", f"Copied {text}.", "success")
+
+
 def run_gui():
     setup_logging()
     shared_state = SharedState()
@@ -107,6 +122,8 @@ def run_gui():
 
     anki_notifier = AnkiExportNotifier()
     anki_notifier.message.connect(tray_icon.show_anki_message)
+    clipboard_controller = ClipboardController()
+    clipboard_controller.message.connect(tray_icon.show_status_message)
     anki_worker = AnkiExportWorker(
         config.anki_connect_url,
         DECK_NAME,
@@ -119,11 +136,11 @@ def run_gui():
     def export_latest_to_anki():
         export_data = popup_window.get_latest_export_data()
         if export_data is None:
-            return
+            return False
 
         if not config.anki_capture_screenshot:
             anki_worker.submit(export_data)
-            return
+            return True
 
         if not anki_capture_lock.acquire(blocking=False):
             anki_notifier.message.emit(
@@ -131,7 +148,7 @@ def run_gui():
                 "Finish or cancel the current crop before creating another Anki card.",
                 "warning",
             )
-            return
+            return True
 
         begin_capture_interaction()
 
@@ -158,18 +175,36 @@ def run_gui():
             end_capture_interaction()
             anki_capture_lock.release()
             raise
+        return True
 
-    anki_hotkeys = GlobalHotkeyListener(export_latest_to_anki)
+    def copy_latest_to_clipboard():
+        if not popup_window.is_visible or config.is_paused:
+            return False
+
+        text = popup_window.get_latest_copy_text()
+        if not text:
+            clipboard_controller.message.emit(
+                "Clipboard copy skipped",
+                "No visible vocabulary entry to copy.",
+                "warning",
+            )
+            return True
+
+        clipboard_controller.copy_requested.emit(text)
+        return True
+
+    global_hotkeys = GlobalHotkeyListener(export_latest_to_anki, copy_latest_to_clipboard)
 
     for t in [lookup, hit_scanner, ocr_processor, screen_manager, input_loop, anki_worker]:
         t.start()
-    anki_hotkeys.start()
+    global_hotkeys.start()
 
     ready_message = f"""
     --------------------------------------------------
     {APP_NAME}.{APP_VERSION} is running in the background.
 
       - To configure or change scan screen: Right-click the menu bar icon.
+      - To copy the visible top entry expression: Ctrl+Shift+C.
       - To export the visible top entry to Anki: Ctrl+Shift+M.
       - To exit: Press Ctrl+C in this terminal.
 
@@ -184,7 +219,7 @@ def run_gui():
     signal.signal(signal.SIGTERM, signal_handler)
     exit_code = app.exec()
 
-    anki_hotkeys.stop()
+    global_hotkeys.stop()
     anki_worker.stop()
     shared_state.running = False
     shared_state.screenshot_trigger_event.set()

@@ -250,6 +250,16 @@ class Popup(QWidget):
             return None
         return data
 
+    def get_latest_copy_text(self):
+        with self._data_lock:
+            data = self._last_latest_data
+        if not self.is_visible or config.is_paused:
+            return None
+        entry = self._top_visible_dictionary_entry(data)
+        if not entry:
+            return None
+        return entry.written_form
+
     @staticmethod
     def _entries_from_data(data):
         if isinstance(data, LookupResult):

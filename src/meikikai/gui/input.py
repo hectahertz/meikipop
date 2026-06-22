@@ -23,6 +23,7 @@ MEDIA_REMOTE_OSASCRIPT_TIMEOUT_SECONDS = 0.35
 
 MR_COMMAND_PLAY = 0
 MR_COMMAND_PAUSE = 1
+MACOS_KEYCODE_C = 8
 MACOS_KEYCODE_M = 46
 
 _MEDIA_REMOTE_UNAVAILABLE = object()
@@ -168,24 +169,28 @@ def pause_macos_media_if_playing() -> bool:
 
 
 class GlobalHotkeyListener:
-    HOTKEY_LABEL = "Ctrl+Shift+M"
+    ANKI_HOTKEY_LABEL = "Ctrl+Shift+M"
+    COPY_HOTKEY_LABEL = "Ctrl+Shift+C"
 
-    def __init__(self, on_anki_export):
+    def __init__(self, on_anki_export, on_copy_to_clipboard):
         self.on_anki_export = on_anki_export
+        self.on_copy_to_clipboard = on_copy_to_clipboard
         self._running = False
         self._thread = None
         self._loop = None
         self._tap = None
         self._tap_callback = None
-        self._hotkey_down = False
+        self._hotkeys_down = set()
 
     def start(self):
         if self._thread:
             return
         self._running = True
-        self._thread = threading.Thread(target=self._run_event_tap, daemon=True, name="AnkiHotkeyListener")
+        self._thread = threading.Thread(target=self._run_event_tap, daemon=True, name="GlobalHotkeyListener")
         self._thread.start()
-        logger.info(f"Registered Anki export hotkey: {self.HOTKEY_LABEL}")
+        logger.info(
+            f"Registered global hotkeys: {self.ANKI_HOTKEY_LABEL}, {self.COPY_HOTKEY_LABEL}"
+        )
 
     def stop(self):
         self._running = False
@@ -197,7 +202,7 @@ class GlobalHotkeyListener:
         self._loop = None
         self._tap = None
         self._tap_callback = None
-        self._hotkey_down = False
+        self._hotkeys_down.clear()
 
     def _run_event_tap(self):
         try:
@@ -215,7 +220,7 @@ class GlobalHotkeyListener:
                 None,
             )
             if self._tap is None:
-                logger.warning("Failed to create Anki export hotkey event tap. Check Accessibility permission.")
+                logger.warning("Failed to create global hotkey event tap. Check Accessibility permission.")
                 return
 
             source = Quartz.CFMachPortCreateRunLoopSource(None, self._tap, 0)
@@ -226,7 +231,7 @@ class GlobalHotkeyListener:
             while self._running:
                 Quartz.CFRunLoopRunInMode(Quartz.kCFRunLoopDefaultMode, 0.25, False)
         except Exception:
-            logger.exception("Anki export hotkey listener failed.")
+            logger.exception("Global hotkey listener failed.")
         finally:
             self._loop = None
             self._tap = None
@@ -244,22 +249,29 @@ class GlobalHotkeyListener:
 
         try:
             keycode = Quartz.CGEventGetIntegerValueField(event, Quartz.kCGKeyboardEventKeycode)
-            if keycode != MACOS_KEYCODE_M:
+            if keycode not in (MACOS_KEYCODE_C, MACOS_KEYCODE_M):
                 return event
 
-            if event_type == Quartz.kCGEventKeyUp and self._hotkey_down:
-                self._hotkey_down = False
+            if event_type == Quartz.kCGEventKeyUp and keycode in self._hotkeys_down:
+                self._hotkeys_down.remove(keycode)
                 return None
 
-            if event_type != Quartz.kCGEventKeyDown or not self._has_ctrl_shift(event):
+            if event_type != Quartz.kCGEventKeyDown:
                 return event
 
-            if not self._hotkey_down:
-                self._hotkey_down = True
-                self._on_anki_export()
+            if keycode in self._hotkeys_down:
+                return None
+
+            if not self._has_ctrl_shift(event):
+                return event
+
+            if not self._handle_hotkey(keycode):
+                return event
+
+            self._hotkeys_down.add(keycode)
             return None
         except Exception:
-            logger.exception("Anki export hotkey handler failed.")
+            logger.exception("Global hotkey handler failed.")
             return None
 
     def _has_ctrl_shift(self, event) -> bool:
@@ -269,11 +281,16 @@ class GlobalHotkeyListener:
             and flags & Quartz.kCGEventFlagMaskShift
         )
 
-    def _on_anki_export(self):
+    def _handle_hotkey(self, keycode):
         try:
-            self.on_anki_export()
+            if keycode == MACOS_KEYCODE_M:
+                return bool(self.on_anki_export())
+            if keycode == MACOS_KEYCODE_C:
+                return bool(self.on_copy_to_clipboard())
         except Exception:
-            logger.exception("Anki export hotkey handler failed.")
+            logger.exception("Global hotkey handler failed.")
+            return True
+        return False
 
 
 class InputLoop(threading.Thread):

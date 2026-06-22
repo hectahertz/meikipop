@@ -1,7 +1,7 @@
 # meikikai/gui/tray.py
 import os
 
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import QTimer, pyqtSlot
 from PyQt6.QtGui import QIcon, QAction, QActionGroup
 from PyQt6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
 
@@ -118,7 +118,8 @@ class TrayIcon(QSystemTrayIcon):
         """Updates the tray menu's checkmarks to reflect the current config."""
         self.auto_pause_media_action.setChecked(config.auto_pause_media)
 
-    def show_anki_message(self, title: str, message: str, level: str = "info"):
+    @pyqtSlot(str, str, str)
+    def show_status_message(self, title: str, message: str, level: str = "info"):
         icons = {
             "success": QSystemTrayIcon.MessageIcon.Information,
             "duplicate": QSystemTrayIcon.MessageIcon.Information,
@@ -127,6 +128,10 @@ class TrayIcon(QSystemTrayIcon):
             "critical": QSystemTrayIcon.MessageIcon.Critical,
         }
         self.showMessage(title, message, icons.get(level, QSystemTrayIcon.MessageIcon.Information), 4500)
+
+    @pyqtSlot(str, str, str)
+    def show_anki_message(self, title: str, message: str, level: str = "info"):
+        self.show_status_message(title, message, level)
 
     def show_settings(self):
         settings_dialog = SettingsDialog(self.ocr_processor, self.popup_window, self)

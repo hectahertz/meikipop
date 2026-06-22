@@ -181,6 +181,16 @@ class SettingsDialog(QDialog):
                     "Prompt for a native macOS crop when adding a card. Esc cancels card creation; disable this to add cards without screenshots.",
                     self.anki_capture_screenshot_check,
                 ),
+            ],
+        ))
+        main_layout.addSpacing(14)
+        main_layout.addWidget(self._section(
+            "Shortcuts",
+            [
+                self._info_row(
+                    "Ctrl+Shift+C",
+                    "While the popup is visible, copies the top entry expression to the clipboard."
+                ),
                 self._info_row(
                     "Ctrl+Shift+M",
                     "While the popup is visible, adds the top entry to Anki. "
