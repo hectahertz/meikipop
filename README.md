@@ -15,7 +15,7 @@ Forked from [rtr46/meikipop](https://github.com/rtr46/meikipop).
 - **macOS-only app flow** with menu bar controls and fullscreen/Spaces-friendly popup behavior.
 - **One-display or all-displays scanning** from the menu bar.
 - **Optional media auto-pause** while dictionary results are visible.
-- **Direct Anki export** through AnkiConnect with automatic deck/note type setup.
+- **Direct Anki export** through AnkiConnect with automatic deck/note type setup and optional screenshot images.
 
 ## Features
 
@@ -29,7 +29,7 @@ Forked from [rtr46/meikipop](https://github.com/rtr46/meikipop).
 - Stays visible across macOS Spaces and fullscreen apps.
 - Runs from the macOS menu bar with pause, settings, screen selection, and quit controls.
 - Can pause currently playing macOS media while the popup is visible, then resume it afterward.
-- Adds the visible top vocabulary entry directly to Anki through AnkiConnect.
+- Adds the visible top vocabulary entry directly to Anki through AnkiConnect, with optional cropped screenshots on cards.
 
 ## Requirements
 
@@ -47,7 +47,7 @@ Logs are stored in `~/Library/Logs/MeikiKai/meikikai.log`.
 
 ## Install
 
-Download the latest macOS app bundle:
+Download the latest macOS release DMG:
 
 <https://github.com/hectahertz/meikikai/releases/latest>
 
@@ -56,6 +56,8 @@ Or run from source:
 ```bash
 git clone https://github.com/hectahertz/meikikai.git
 cd meikikai
+python3 -m venv .venv
+source .venv/bin/activate
 python -m pip install -e .
 meikikai
 ```
@@ -77,6 +79,7 @@ Settings are saved to `~/Library/Application Support/meikikai/config.ini`.
 - **Scan cooldown**: minimum delay between OCR scans.
 - **Popup placement**: choose visual novel mode or flipped placement around the cursor.
 - **AnkiConnect URL**: defaults to `http://127.0.0.1:8765`.
+- **Capture screenshot**: opens the native macOS cropper before Anki card creation; Esc adds the card without an image.
 
 ### Anki export
 
@@ -137,7 +140,7 @@ Render Anki card samples for UI review:
 Quick syntax validation:
 
 ```bash
-.venv/bin/python -m py_compile src/meikikai/main.py
+find src scripts -name '*.py' -print0 | xargs -0 .venv/bin/python -m py_compile
 ```
 
 Build the macOS app:
@@ -153,7 +156,7 @@ cp .env.example .env
 scripts/build_install_macos.sh
 ```
 
-Set `MEIKIKAI_CODESIGN_IDENTITY` in `.env` to sign the local build.
+Optionally set `MEIKIKAI_CODESIGN_IDENTITY` in `.env` to re-sign the local build with a specific identity.
 
 ## Troubleshooting
 
