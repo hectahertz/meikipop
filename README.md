@@ -79,7 +79,7 @@ Settings are saved to `~/Library/Application Support/meikikai/config.ini`.
 - **Scan cooldown**: minimum delay between OCR scans.
 - **Popup placement**: choose visual novel mode or flipped placement around the cursor.
 - **AnkiConnect URL**: defaults to `http://127.0.0.1:8765`.
-- **Capture screenshot**: opens the native macOS cropper before Anki card creation; Esc adds the card without an image.
+- **Capture screenshot**: opens the native macOS cropper before Anki card creation; Esc cancels card creation. Disable this to add cards without screenshots.
 
 ### Anki export
 
@@ -96,7 +96,7 @@ Export behavior:
 - Creates deck `MeikiKai Mining` automatically.
 - Creates or updates note type `MeikiKai Vocab` automatically when safe.
 - Uses a recognition card with the sentence on the front and popup-style details on the back.
-- By default, opens the native macOS screenshot cropper before adding the card; pressing Esc adds the card without an image. This can be disabled in Settings.
+- By default, opens the native macOS screenshot cropper before adding the card; pressing Esc cancels card creation. Disable this in Settings to add cards without screenshots.
 - Includes expression, reading, lookup text, highlighted sentence, optional screenshot, definitions, part of speech, tags, frequency, deconjugation, kanji info, and entry ID fields.
 - Adds tags `meikikai` and `meikikai-vocab`.
 - Blocks duplicate cards by the first `Key` field.

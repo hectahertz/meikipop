@@ -13,7 +13,7 @@ SCREENCAPTURE_PATH = "/usr/sbin/screencapture"
 
 
 def capture_interactive_png() -> Optional[str]:
-    """Open the native macOS crop UI and return a PNG path, or None if canceled."""
+    """Open the native macOS crop UI and return a PNG path, or None if no image is captured."""
     fd, path_str = tempfile.mkstemp(prefix="meikikai-anki-", suffix=".png")
     os.close(fd)
     path = Path(path_str)

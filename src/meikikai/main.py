@@ -138,6 +138,14 @@ def run_gui():
         def capture_and_submit():
             try:
                 screenshot_path = capture_interactive_png()
+                if screenshot_path is None:
+                    anki_notifier.message.emit(
+                        "Anki export canceled",
+                        "Screenshot capture canceled; no card was created.",
+                        "info",
+                    )
+                    return
+
                 anki_worker.submit(export_data, screenshot_path)
             finally:
                 end_capture_interaction()

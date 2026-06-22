@@ -1,6 +1,6 @@
 # meikikai/gui/settings_dialog.py
-from PyQt6.QtCore import QLocale, Qt
-from PyQt6.QtGui import QFont, QIcon
+from PyQt6.QtCore import QLocale, QRectF, QSize, Qt
+from PyQt6.QtGui import QColor, QFont, QIcon, QPainter, QPainterPath, QPen
 from PyQt6.QtWidgets import (
     QAbstractSpinBox,
     QCheckBox,
@@ -42,6 +42,51 @@ class DecimalSpinBox(QDoubleSpinBox):
 
     def valueFromText(self, text):
         return super().valueFromText(text.replace(",", "."))
+
+
+class IndicatorCheckBox(QCheckBox):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFixedSize(22, 22)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+
+    def sizeHint(self):
+        return QSize(22, 22)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        rect = QRectF(2, 2, 18, 18)
+        if self.isChecked():
+            background = QColor("#0a84ff")
+            border = QColor(75, 164, 255)
+        else:
+            background = QColor(237, 241, 247, 13)
+            border = QColor(237, 241, 247, 88)
+
+        if self.underMouse() or self.hasFocus():
+            border = QColor(10, 132, 255, 190)
+
+        painter.setBrush(background)
+        painter.setPen(QPen(border, 1.5))
+        painter.drawRoundedRect(rect, 5, 5)
+
+        if self.isChecked():
+            check = QPainterPath()
+            check.moveTo(6.7, 11.0)
+            check.lineTo(9.4, 13.7)
+            check.lineTo(15.6, 7.4)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.setPen(QPen(
+                QColor("#ffffff"),
+                2.2,
+                Qt.PenStyle.SolidLine,
+                Qt.PenCapStyle.RoundCap,
+                Qt.PenJoinStyle.RoundJoin,
+            ))
+            painter.drawPath(check)
 
 
 class SettingsDialog(QDialog):
@@ -93,7 +138,7 @@ class SettingsDialog(QDialog):
         self.anki_connect_url_edit.setPlaceholderText("http://127.0.0.1:8765")
         self._prepare_text_control(self.anki_connect_url_edit, 246)
 
-        self.anki_capture_screenshot_check = QCheckBox()
+        self.anki_capture_screenshot_check = IndicatorCheckBox()
         self.anki_capture_screenshot_check.setChecked(config.anki_capture_screenshot)
 
         main_layout.addWidget(self._section(
@@ -133,7 +178,7 @@ class SettingsDialog(QDialog):
                 ),
                 self._setting_row(
                     "Capture screenshot",
-                    "Prompt for a native macOS crop when adding a card. Esc adds the card without an image.",
+                    "Prompt for a native macOS crop when adding a card. Esc cancels card creation; disable this to add cards without screenshots.",
                     self.anki_capture_screenshot_check,
                 ),
                 self._info_row(
@@ -218,20 +263,6 @@ class SettingsDialog(QDialog):
             QDoubleSpinBox:focus,
             QLineEdit:focus {{
                 border-color: rgba(10, 132, 255, 190);
-            }}
-            QCheckBox::indicator {{
-                width: 18px;
-                height: 18px;
-            }}
-            QCheckBox::indicator:unchecked {{
-                background-color: rgba(237, 241, 247, 13);
-                border: 1px solid rgba(237, 241, 247, 40);
-                border-radius: 5px;
-            }}
-            QCheckBox::indicator:checked {{
-                background-color: #0a84ff;
-                border: 1px solid rgba(10, 132, 255, 220);
-                border-radius: 5px;
             }}
         """)
 
