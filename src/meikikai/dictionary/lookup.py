@@ -96,9 +96,17 @@ class Lookup(threading.Thread):
 
         results = self._do_lookup(text)
 
-        # Append bundled kanji data for the first character when available.
-        if KANJI_REGEX.match(text[0]):
-            kd = self.dictionary.kanji_entries.get(text[0])
+        # Append bundled kanji data for each unique kanji in the best matched word.
+        # If no vocabulary entry matched, preserve the old single-character fallback.
+        kanji_source = results[0].written_form if results else text[:1]
+        seen_kanji = set()
+        for match in KANJI_REGEX.finditer(kanji_source):
+            character = match.group(0)
+            if character in seen_kanji:
+                continue
+            seen_kanji.add(character)
+
+            kd = self.dictionary.kanji_entries.get(character)
             if kd:
                 results.append(KanjiEntry(
                     character=kd['character'],

@@ -149,6 +149,47 @@ def long_entries() -> list[DictionaryEntry]:
     ]
 
 
+def nature_entries() -> list[DictionaryEntry | KanjiEntry]:
+    return [
+        DictionaryEntry(
+            id=20,
+            written_form="自然",
+            reading="しぜん",
+            senses=[
+                {
+                    "glosses": ["nature", "spontaneity", "naturally", "in due course"],
+                    "pos": ["n", "adj-no", "adv"],
+                    "tags": [],
+                },
+            ],
+            freq=724,
+            deconjugation_process=(),
+        ),
+        KanjiEntry(
+            character="自",
+            meanings=["oneself", "self", "from"],
+            readings=["ジ", "シ", "みずか.ら", "おの.ずから"],
+            examples=[
+                {"w": "自分", "r": "じぶん", "m": "oneself"},
+                {"w": "自然", "r": "しぜん", "m": "nature"},
+                {"w": "自由", "r": "じゆう", "m": "freedom"},
+            ],
+            components=[{"c": "目", "m": "eye"}],
+        ),
+        KanjiEntry(
+            character="然",
+            meanings=["so", "if so", "in that case", "well"],
+            readings=["ゼン", "ネン", "しか", "しか.り"],
+            examples=[
+                {"w": "自然", "r": "しぜん", "m": "nature"},
+                {"w": "当然", "r": "とうぜん", "m": "natural; obvious"},
+                {"w": "全然", "r": "ぜんぜん", "m": "not at all"},
+            ],
+            components=[{"c": "灬", "m": "fire"}, {"c": "月", "m": "moon; flesh"}, {"c": "犬", "m": "dog"}],
+        ),
+    ]
+
+
 def tall_entries() -> list[DictionaryEntry | KanjiEntry]:
     return [
         DictionaryEntry(
@@ -213,7 +254,7 @@ def main() -> int:
     parser.add_argument(
         "case",
         nargs="?",
-        choices=("mockup", "long", "switch", "tall"),
+        choices=("mockup", "long", "switch", "tall", "nature"),
         default="mockup",
         help="Sample state to render. Default: mockup.",
     )
@@ -233,6 +274,8 @@ def main() -> int:
         width, height = render(long_entries(), output)
     elif args.case == "tall":
         width, height = render(tall_entries(), output)
+    elif args.case == "nature":
+        width, height = render(nature_entries(), output)
     else:
         width, height = render_switch(output)
 
