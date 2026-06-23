@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, QThread, QUrl, Qt, pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QDesktopServices, QFont, QIcon
+from PyQt6.QtGui import QDesktopServices, QIcon
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 )
 
 from meikikai.config.config import APP_NAME
+from meikikai.gui.design import DIALOG, apply_dialog_style, set_button_variant
 from meikikai.ocr.providers.chrome_screen_ai.component import (
     CIPD_SOURCE_LABEL,
     ScreenAiComponentStatus,
@@ -26,15 +27,7 @@ from meikikai.ocr.providers.chrome_screen_ai.component import (
 )
 from meikikai.utils.paths import paths
 
-FONT_STACK_QSS = '"SF Pro Text", "Helvetica Neue", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif'
-DIALOG_BG = "#20232b"
-PANEL_BG = "rgba(237, 241, 247, 9)"
-PANEL_BORDER = "rgba(237, 241, 247, 24)"
-TEXT_COLOR = "#edf1f7"
-MUTED_COLOR = "#a8b0c2"
-SUBTLE_COLOR = "#7f8797"
 APPROX_INSTALLED_SIZE = "about 125 MB"
-DIALOG_TITLE_HEIGHT = 28
 
 
 def _display_path(path: str | Path) -> str:
@@ -69,19 +62,25 @@ class ScreenAiDownloadConfirmDialog(QDialog):
         self.setWindowTitle("Reinstall/update Chrome Screen AI?" if installed else "Download Chrome Screen AI?")
         self.setWindowIcon(QIcon(paths.get_resource_path('app_icon.icns')))
         self.setFixedWidth(560)
-        self._apply_window_style()
+        apply_dialog_style(self)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(18, 20, 18, 16)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(
+            DIALOG.window_margin_x,
+            DIALOG.window_margin_top,
+            DIALOG.window_margin_x,
+            DIALOG.confirm_margin_bottom,
+        )
+        main_layout.setSpacing(0)
 
         title_label = QLabel("Reinstall/update Chrome Screen AI?" if installed else "Download Chrome Screen AI?")
         title_label.setObjectName("dialogTitle")
         title_label.setTextFormat(Qt.TextFormat.PlainText)
         title_label.setWordWrap(False)
         title_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        title_label.setFixedHeight(DIALOG_TITLE_HEIGHT)
+        title_label.setFixedHeight(DIALOG.title_height)
         main_layout.addWidget(title_label)
+        main_layout.addSpacing(DIALOG.title_gap)
 
         subtitle = QLabel(
             "MeikiKai will download and install this OCR component from Google/Chromium public infrastructure."
@@ -89,8 +88,10 @@ class ScreenAiDownloadConfirmDialog(QDialog):
         subtitle.setObjectName("confirmBody")
         subtitle.setTextFormat(Qt.TextFormat.PlainText)
         subtitle.setWordWrap(True)
+        subtitle.setMaximumWidth(500)
         subtitle.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         main_layout.addWidget(subtitle)
+        main_layout.addSpacing(DIALOG.prose_gap)
 
         bullets = QWidget()
         bullets.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -104,12 +105,18 @@ class ScreenAiDownloadConfirmDialog(QDialog):
         bullets_layout.addWidget(self._bullet_row("Experimental for this use."))
         bullets_layout.addWidget(self._bullet_row("Removable at any time from Settings."))
         main_layout.addWidget(bullets)
+        main_layout.addSpacing(DIALOG.prose_panel_gap)
 
         details_panel = QFrame()
         details_panel.setObjectName("detailsPanel")
         details_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         details_layout = QVBoxLayout(details_panel)
-        details_layout.setContentsMargins(12, 10, 12, 10)
+        details_layout.setContentsMargins(
+            DIALOG.inset_panel_padding_x,
+            DIALOG.inset_panel_padding_y,
+            DIALOG.inset_panel_padding_x,
+            DIALOG.inset_panel_padding_y,
+        )
         details_layout.setSpacing(4)
 
         destination_label = QLabel("Install location")
@@ -131,14 +138,18 @@ class ScreenAiDownloadConfirmDialog(QDialog):
         main_layout.addWidget(details_panel)
 
         if installed:
+            main_layout.addSpacing(DIALOG.prose_gap)
             replace_note = QLabel("The existing component files will be replaced. Restart MeikiKai before OCR resumes.")
             replace_note.setObjectName("detailText")
             replace_note.setTextFormat(Qt.TextFormat.PlainText)
             replace_note.setWordWrap(True)
+            replace_note.setMaximumWidth(500)
             replace_note.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             main_layout.addWidget(replace_note)
 
+        main_layout.addSpacing(DIALOG.footer_gap)
         button_layout = QHBoxLayout()
+        button_layout.setSpacing(DIALOG.action_gap)
         button_layout.addStretch(1)
         cancel_button = QPushButton("Cancel")
         cancel_button.setMinimumWidth(78)
@@ -146,7 +157,7 @@ class ScreenAiDownloadConfirmDialog(QDialog):
         button_layout.addWidget(cancel_button)
 
         primary_button = QPushButton("Reinstall/update" if installed else "Download")
-        primary_button.setObjectName("primaryButton")
+        set_button_variant(primary_button, None if installed else "primary")
         primary_button.setMinimumWidth(116 if installed else 92)
         primary_button.clicked.connect(self.accept)
         primary_button.setDefault(True)
@@ -176,82 +187,6 @@ class ScreenAiDownloadConfirmDialog(QDialog):
         row_layout.addWidget(label, 1)
         return row
 
-    def _apply_window_style(self):
-        base_font = QFont("SF Pro Text")
-        base_font.setPixelSize(13)
-        self.setFont(base_font)
-        self.setStyleSheet(f"""
-            QDialog {{
-                background-color: {DIALOG_BG};
-                color: {TEXT_COLOR};
-                font-family: {FONT_STACK_QSS};
-                font-size: 13px;
-            }}
-            QLabel#dialogTitle {{
-                color: {TEXT_COLOR};
-                font-size: 20px;
-                font-weight: 800;
-            }}
-            QLabel#confirmBody {{
-                color: {MUTED_COLOR};
-                font-size: 12px;
-                line-height: 145%;
-            }}
-            QLabel#bulletMarker {{
-                color: #6f90bd;
-                font-size: 14px;
-                font-weight: 800;
-            }}
-            QFrame#detailsPanel {{
-                background-color: rgba(237, 241, 247, 10);
-                border: 1px solid rgba(237, 241, 247, 24);
-                border-radius: 10px;
-            }}
-            QLabel#detailTitle {{
-                color: {TEXT_COLOR};
-                font-size: 11px;
-                font-weight: 750;
-            }}
-            QLabel#detailText {{
-                color: {SUBTLE_COLOR};
-                font-size: 11px;
-            }}
-            QLabel#pathText {{
-                color: {MUTED_COLOR};
-                font-family: "SF Mono", Menlo, Monaco, monospace;
-                font-size: 11px;
-            }}
-            QPushButton {{
-                background-color: rgba(237, 241, 247, 14);
-                border: 1px solid rgba(237, 241, 247, 42);
-                border-radius: 7px;
-                color: {TEXT_COLOR};
-                font-weight: 650;
-                min-height: 24px;
-                padding: 3px 10px;
-            }}
-            QPushButton:hover {{
-                background-color: rgba(237, 241, 247, 24);
-                border-color: rgba(237, 241, 247, 70);
-            }}
-            QPushButton:pressed {{
-                background-color: rgba(237, 241, 247, 32);
-            }}
-            QPushButton#primaryButton {{
-                background-color: #0a84ff;
-                border-color: rgba(123, 193, 255, 170);
-                color: #ffffff;
-            }}
-            QPushButton#primaryButton:hover {{
-                background-color: #2492ff;
-            }}
-            QPushButton#primaryButton:disabled {{
-                background-color: rgba(237, 241, 247, 8);
-                border-color: rgba(237, 241, 247, 18);
-                color: rgba(237, 241, 247, 84);
-            }}
-        """)
-
 
 class ScreenAiUninstallConfirmDialog(QDialog):
     def __init__(self, status: ScreenAiComponentStatus, parent=None):
@@ -259,18 +194,24 @@ class ScreenAiUninstallConfirmDialog(QDialog):
         self.setWindowTitle("Uninstall Chrome Screen AI?")
         self.setWindowIcon(QIcon(paths.get_resource_path('app_icon.icns')))
         self.setFixedWidth(500)
-        self._apply_window_style()
+        apply_dialog_style(self)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(18, 20, 18, 16)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(
+            DIALOG.window_margin_x,
+            DIALOG.window_margin_top,
+            DIALOG.window_margin_x,
+            DIALOG.confirm_margin_bottom,
+        )
+        main_layout.setSpacing(0)
 
         title = QLabel("Uninstall Chrome Screen AI?")
         title.setObjectName("dialogTitle")
         title.setTextFormat(Qt.TextFormat.PlainText)
         title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        title.setFixedHeight(DIALOG_TITLE_HEIGHT)
+        title.setFixedHeight(DIALOG.title_height)
         main_layout.addWidget(title)
+        main_layout.addSpacing(DIALOG.title_gap)
 
         body = QLabel(
             "Remove the local Chrome Screen AI files installed for MeikiKai. OCR will be disabled until you download it again."
@@ -278,13 +219,20 @@ class ScreenAiUninstallConfirmDialog(QDialog):
         body.setObjectName("confirmBody")
         body.setTextFormat(Qt.TextFormat.PlainText)
         body.setWordWrap(True)
+        body.setMaximumWidth(460)
         main_layout.addWidget(body)
+        main_layout.addSpacing(DIALOG.prose_panel_gap)
 
         details_panel = QFrame()
         details_panel.setObjectName("detailsPanel")
         details_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         details_layout = QVBoxLayout(details_panel)
-        details_layout.setContentsMargins(12, 10, 12, 10)
+        details_layout.setContentsMargins(
+            DIALOG.inset_panel_padding_x,
+            DIALOG.inset_panel_padding_y,
+            DIALOG.inset_panel_padding_x,
+            DIALOG.inset_panel_padding_y,
+        )
         details_layout.setSpacing(4)
 
         location_label = QLabel("Remove location")
@@ -299,8 +247,10 @@ class ScreenAiUninstallConfirmDialog(QDialog):
         location.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         details_layout.addWidget(location)
         main_layout.addWidget(details_panel)
+        main_layout.addSpacing(DIALOG.footer_gap)
 
         button_layout = QHBoxLayout()
+        button_layout.setSpacing(DIALOG.action_gap)
         button_layout.addStretch(1)
         cancel_button = QPushButton("Cancel")
         cancel_button.setMinimumWidth(78)
@@ -308,74 +258,13 @@ class ScreenAiUninstallConfirmDialog(QDialog):
         button_layout.addWidget(cancel_button)
 
         uninstall_button = QPushButton("Uninstall")
-        uninstall_button.setObjectName("destructiveButton")
+        set_button_variant(uninstall_button, "destructive")
         uninstall_button.setMinimumWidth(86)
         uninstall_button.clicked.connect(self.accept)
         button_layout.addWidget(uninstall_button)
         main_layout.addLayout(button_layout)
 
         self.setFixedHeight(self.sizeHint().height())
-
-    def _apply_window_style(self):
-        base_font = QFont("SF Pro Text")
-        base_font.setPixelSize(13)
-        self.setFont(base_font)
-        self.setStyleSheet(f"""
-            QDialog {{
-                background-color: {DIALOG_BG};
-                color: {TEXT_COLOR};
-                font-family: {FONT_STACK_QSS};
-                font-size: 13px;
-            }}
-            QLabel#dialogTitle {{
-                color: {TEXT_COLOR};
-                font-size: 20px;
-                font-weight: 800;
-            }}
-            QLabel#confirmBody {{
-                color: {MUTED_COLOR};
-                font-size: 12px;
-                line-height: 145%;
-            }}
-            QFrame#detailsPanel {{
-                background-color: rgba(237, 241, 247, 10);
-                border: 1px solid rgba(237, 241, 247, 24);
-                border-radius: 10px;
-            }}
-            QLabel#detailTitle {{
-                color: {TEXT_COLOR};
-                font-size: 11px;
-                font-weight: 750;
-            }}
-            QLabel#pathText {{
-                color: {MUTED_COLOR};
-                font-family: "SF Mono", Menlo, Monaco, monospace;
-                font-size: 11px;
-            }}
-            QPushButton {{
-                background-color: rgba(237, 241, 247, 14);
-                border: 1px solid rgba(237, 241, 247, 42);
-                border-radius: 7px;
-                color: {TEXT_COLOR};
-                font-weight: 650;
-                min-height: 24px;
-                padding: 3px 10px;
-            }}
-            QPushButton:hover {{
-                background-color: rgba(237, 241, 247, 24);
-                border-color: rgba(237, 241, 247, 70);
-            }}
-            QPushButton#destructiveButton {{
-                background-color: rgba(255, 69, 58, 16);
-                border-color: rgba(255, 105, 97, 95);
-                color: #ffd7d4;
-            }}
-            QPushButton#destructiveButton:hover {{
-                background-color: rgba(255, 69, 58, 30);
-                border-color: rgba(255, 105, 97, 135);
-                color: #ffffff;
-            }}
-        """)
 
 
 class ScreenAiMessageDialog(QDialog):
@@ -384,32 +273,45 @@ class ScreenAiMessageDialog(QDialog):
         self.setWindowTitle(title)
         self.setWindowIcon(QIcon(paths.get_resource_path('app_icon.icns')))
         self.setFixedWidth(500)
-        self._apply_window_style()
+        apply_dialog_style(self)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(18, 20, 18, 16)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(
+            DIALOG.window_margin_x,
+            DIALOG.window_margin_top,
+            DIALOG.window_margin_x,
+            DIALOG.confirm_margin_bottom,
+        )
+        main_layout.setSpacing(0)
 
         title_label = QLabel(title)
         title_label.setObjectName("dialogTitle")
         title_label.setTextFormat(Qt.TextFormat.PlainText)
         title_label.setWordWrap(True)
         title_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        title_label.setFixedHeight(DIALOG_TITLE_HEIGHT)
+        title_label.setFixedHeight(DIALOG.title_height)
         main_layout.addWidget(title_label)
+        main_layout.addSpacing(DIALOG.title_gap)
 
         message_label = QLabel(message)
         message_label.setObjectName("messageBody")
         message_label.setTextFormat(Qt.TextFormat.PlainText)
         message_label.setWordWrap(True)
+        message_label.setMaximumWidth(460)
         main_layout.addWidget(message_label)
 
         if detail:
+            main_layout.addSpacing(DIALOG.prose_panel_gap)
             detail_panel = QFrame()
             detail_panel.setObjectName("detailsPanel")
             detail_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             detail_layout = QVBoxLayout(detail_panel)
-            detail_layout.setContentsMargins(12, 10, 12, 10)
+            detail_layout.setContentsMargins(
+                DIALOG.inset_panel_padding_x,
+                DIALOG.inset_panel_padding_y,
+                DIALOG.inset_panel_padding_x,
+                DIALOG.inset_panel_padding_y,
+            )
             detail_layout.setSpacing(0)
             detail_label = QLabel(detail)
             detail_label.setObjectName("messageDetail")
@@ -419,10 +321,12 @@ class ScreenAiMessageDialog(QDialog):
             detail_layout.addWidget(detail_label)
             main_layout.addWidget(detail_panel)
 
+        main_layout.addSpacing(DIALOG.footer_gap)
         button_layout = QHBoxLayout()
+        button_layout.setSpacing(DIALOG.action_gap)
         button_layout.addStretch(1)
         ok_button = QPushButton("OK")
-        ok_button.setObjectName("primaryButton")
+        set_button_variant(ok_button, None)
         ok_button.setMinimumWidth(76)
         ok_button.clicked.connect(self.accept)
         ok_button.setDefault(True)
@@ -430,60 +334,6 @@ class ScreenAiMessageDialog(QDialog):
         main_layout.addLayout(button_layout)
 
         self.setFixedHeight(self.sizeHint().height())
-
-    def _apply_window_style(self):
-        base_font = QFont("SF Pro Text")
-        base_font.setPixelSize(13)
-        self.setFont(base_font)
-        self.setStyleSheet(f"""
-            QDialog {{
-                background-color: {DIALOG_BG};
-                color: {TEXT_COLOR};
-                font-family: {FONT_STACK_QSS};
-                font-size: 13px;
-            }}
-            QLabel#dialogTitle {{
-                color: {TEXT_COLOR};
-                font-size: 20px;
-                font-weight: 800;
-            }}
-            QLabel#messageBody {{
-                color: {MUTED_COLOR};
-                font-size: 12px;
-                line-height: 145%;
-            }}
-            QFrame#detailsPanel {{
-                background-color: rgba(237, 241, 247, 10);
-                border: 1px solid rgba(237, 241, 247, 24);
-                border-radius: 10px;
-            }}
-            QLabel#messageDetail {{
-                color: {MUTED_COLOR};
-                font-family: "SF Mono", Menlo, Monaco, monospace;
-                font-size: 11px;
-            }}
-            QPushButton {{
-                background-color: rgba(237, 241, 247, 14);
-                border: 1px solid rgba(237, 241, 247, 42);
-                border-radius: 7px;
-                color: {TEXT_COLOR};
-                font-weight: 650;
-                min-height: 24px;
-                padding: 3px 10px;
-            }}
-            QPushButton:hover {{
-                background-color: rgba(237, 241, 247, 24);
-                border-color: rgba(237, 241, 247, 70);
-            }}
-            QPushButton#primaryButton {{
-                background-color: #0a84ff;
-                border-color: rgba(123, 193, 255, 170);
-                color: #ffffff;
-            }}
-            QPushButton#primaryButton:hover {{
-                background-color: #2492ff;
-            }}
-        """)
 
 
 class ScreenAiSetupDialog(QDialog):
@@ -503,18 +353,24 @@ class ScreenAiSetupDialog(QDialog):
         self.setWindowTitle("MeikiKai Setup" if setup_required else "Chrome Screen AI Setup")
         self.setWindowIcon(QIcon(paths.get_resource_path('app_icon.icns')))
         self.setFixedWidth(600)
-        self._apply_window_style()
+        apply_dialog_style(self)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(18, 20, 18, 20)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(
+            DIALOG.window_margin_x,
+            DIALOG.window_margin_top,
+            DIALOG.window_margin_x,
+            DIALOG.window_margin_bottom,
+        )
+        main_layout.setSpacing(0)
 
         self.title_label = QLabel("OCR engine required")
         self.title_label.setObjectName("dialogTitle")
         self.title_label.setTextFormat(Qt.TextFormat.PlainText)
         self.title_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.title_label.setFixedHeight(DIALOG_TITLE_HEIGHT)
+        self.title_label.setFixedHeight(DIALOG.title_height)
         main_layout.addWidget(self.title_label)
+        main_layout.addSpacing(DIALOG.title_gap)
 
         disclosure = QLabel(
             "MeikiKai uses Chrome Screen AI to read Japanese text from your screen.\n\n"
@@ -524,10 +380,13 @@ class ScreenAiSetupDialog(QDialog):
         )
         disclosure.setObjectName("bodyText")
         disclosure.setWordWrap(True)
+        disclosure.setMaximumWidth(500)
         disclosure.setTextFormat(Qt.TextFormat.PlainText)
         main_layout.addWidget(disclosure)
+        main_layout.addSpacing(DIALOG.prose_panel_gap)
 
         main_layout.addWidget(self._status_panel())
+        main_layout.addSpacing(DIALOG.block_gap)
 
         self.progress_label = QLabel("")
         self.progress_label.setObjectName("progressText")
@@ -537,44 +396,42 @@ class ScreenAiSetupDialog(QDialog):
         main_layout.addWidget(self.progress_label)
 
         self.download_button = QPushButton("Download Chrome Screen AI")
-        self.download_button.setObjectName("primaryButton")
+        set_button_variant(self.download_button, "primary")
         self.download_button.setMinimumWidth(190)
         self.download_button.clicked.connect(self.confirm_download)
 
-        primary_actions = QHBoxLayout()
-        primary_actions.setSpacing(8)
-        primary_actions.addWidget(self.download_button)
-        primary_actions.addStretch(1)
-        main_layout.addLayout(primary_actions)
-
-        self.notices_button = QPushButton("Open third-party notices")
-        self.notices_button.setMinimumWidth(158)
-        self.notices_button.clicked.connect(self.open_notices)
         self.uninstall_button = QPushButton("Uninstall")
-        self.uninstall_button.setObjectName("destructiveButton")
+        set_button_variant(self.uninstall_button, "destructive")
         self.uninstall_button.setMinimumWidth(82)
         self.uninstall_button.clicked.connect(self.confirm_uninstall)
 
-        self.maintenance_widget = QWidget()
-        maintenance_actions = QHBoxLayout(self.maintenance_widget)
-        maintenance_actions.setContentsMargins(0, 0, 0, 0)
-        maintenance_actions.setSpacing(8)
-        maintenance_actions.addWidget(self.notices_button)
-        maintenance_actions.addWidget(self.uninstall_button)
-        maintenance_actions.addStretch(1)
-        main_layout.addWidget(self.maintenance_widget)
+        engine_actions = QHBoxLayout()
+        engine_actions.setSpacing(DIALOG.action_gap)
+        engine_actions.addWidget(self.download_button)
+        engine_actions.addWidget(self.uninstall_button)
+        engine_actions.addStretch(1)
+        main_layout.addLayout(engine_actions)
 
-        separator = QFrame()
-        separator.setObjectName("rowSeparator")
-        separator.setFixedHeight(1)
-        main_layout.addSpacing(2)
-        main_layout.addWidget(separator)
+        self.notices_button = QPushButton("Third-party notices")
+        set_button_variant(self.notices_button, "tertiary")
+        self.notices_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.notices_button.clicked.connect(self.open_notices)
+
+        self.notices_widget = QWidget()
+        notices_layout = QHBoxLayout(self.notices_widget)
+        notices_layout.setContentsMargins(0, DIALOG.prose_gap, 0, 0)
+        notices_layout.setSpacing(0)
+        notices_layout.addWidget(self.notices_button)
+        notices_layout.addStretch(1)
+        main_layout.addWidget(self.notices_widget)
+        main_layout.addSpacing(DIALOG.footer_gap)
 
         bottom_actions = QHBoxLayout()
+        bottom_actions.setSpacing(DIALOG.action_gap)
         bottom_actions.addStretch(1)
         if setup_required:
             self.quit_button = QPushButton(f"Quit {APP_NAME}")
-            self.quit_button.setObjectName("destructiveButton")
+            set_button_variant(self.quit_button, "destructive")
             self.quit_button.setMinimumWidth(108)
             self.quit_button.clicked.connect(QApplication.instance().quit)
             bottom_actions.addWidget(self.quit_button)
@@ -587,110 +444,6 @@ class ScreenAiSetupDialog(QDialog):
         self.refresh_status()
         self.setFixedHeight(self.sizeHint().height())
 
-    def _apply_window_style(self):
-        base_font = QFont("SF Pro Text")
-        base_font.setPixelSize(13)
-        self.setFont(base_font)
-        self.setStyleSheet(f"""
-            QDialog {{
-                background-color: {DIALOG_BG};
-                color: {TEXT_COLOR};
-                font-family: {FONT_STACK_QSS};
-                font-size: 13px;
-            }}
-            QLabel#dialogTitle {{
-                color: {TEXT_COLOR};
-                font-size: 20px;
-                font-weight: 800;
-            }}
-            QLabel#bodyText {{
-                color: {MUTED_COLOR};
-                font-size: 12px;
-                line-height: 145%;
-            }}
-            QLabel#progressText {{
-                background-color: rgba(10, 132, 255, 14);
-                border: 1px solid rgba(10, 132, 255, 48);
-                border-radius: 10px;
-                color: #c8e1ff;
-                font-size: 12px;
-                font-weight: 650;
-                line-height: 145%;
-                padding: 8px 10px;
-            }}
-            QLabel#statusTitle {{
-                color: {SUBTLE_COLOR};
-                font-size: 11px;
-                font-weight: 700;
-            }}
-            QLabel#statusValue {{
-                color: #cdd4e2;
-                font-size: 12px;
-                font-weight: 600;
-            }}
-            QFrame#statusPanel {{
-                background-color: {PANEL_BG};
-                border: 1px solid {PANEL_BORDER};
-                border-radius: 14px;
-            }}
-            QFrame#rowSeparator {{
-                background-color: rgba(237, 241, 247, 18);
-                border: none;
-            }}
-            QPushButton {{
-                background-color: rgba(237, 241, 247, 14);
-                border: 1px solid rgba(237, 241, 247, 42);
-                border-radius: 7px;
-                color: {TEXT_COLOR};
-                font-weight: 650;
-                min-height: 24px;
-                padding: 3px 10px;
-            }}
-            QPushButton:hover {{
-                background-color: rgba(237, 241, 247, 24);
-                border-color: rgba(237, 241, 247, 70);
-            }}
-            QPushButton:pressed {{
-                background-color: rgba(237, 241, 247, 32);
-            }}
-            QPushButton:disabled {{
-                background-color: rgba(237, 241, 247, 8);
-                border-color: rgba(237, 241, 247, 18);
-                color: rgba(237, 241, 247, 84);
-            }}
-            QPushButton#primaryButton {{
-                background-color: #0a84ff;
-                border-color: rgba(123, 193, 255, 170);
-                color: #ffffff;
-            }}
-            QPushButton#primaryButton:hover {{
-                background-color: #2492ff;
-            }}
-            QPushButton#primaryButton:pressed {{
-                background-color: #006edb;
-            }}
-            QPushButton#primaryButton:disabled {{
-                background-color: rgba(237, 241, 247, 8);
-                border-color: rgba(237, 241, 247, 18);
-                color: rgba(237, 241, 247, 84);
-            }}
-            QPushButton#destructiveButton {{
-                background-color: rgba(255, 69, 58, 12);
-                border-color: rgba(255, 105, 97, 70);
-                color: #ffd7d4;
-            }}
-            QPushButton#destructiveButton:hover {{
-                background-color: rgba(255, 69, 58, 28);
-                border-color: rgba(255, 105, 97, 120);
-                color: #ffffff;
-            }}
-            QPushButton#destructiveButton:disabled {{
-                background-color: rgba(237, 241, 247, 8);
-                border-color: rgba(237, 241, 247, 18);
-                color: rgba(237, 241, 247, 84);
-            }}
-        """)
-
     def _status_panel(self):
         panel = QFrame()
         panel.setObjectName("statusPanel")
@@ -698,7 +451,7 @@ class ScreenAiSetupDialog(QDialog):
 
         grid = QGridLayout(panel)
         grid.setContentsMargins(16, 14, 16, 14)
-        grid.setHorizontalSpacing(16)
+        grid.setHorizontalSpacing(12)
         grid.setVerticalSpacing(7)
         grid.setColumnStretch(1, 1)
 
@@ -715,7 +468,7 @@ class ScreenAiSetupDialog(QDialog):
             title_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
             value_label = QLabel("-")
-            value_label.setObjectName("statusValue")
+            value_label.setObjectName("pathText" if key == "location" else "statusValue")
             value_label.setTextFormat(Qt.TextFormat.PlainText)
             value_label.setWordWrap(True)
             value_label.setMinimumWidth(0)
@@ -756,8 +509,9 @@ class ScreenAiSetupDialog(QDialog):
         self._set_primary_button(self.download_button, not status.installed)
         if self.close_button:
             self.close_button.setText("Close" if ready or not self.setup_required else "Not Now")
-        self.maintenance_widget.setVisible(status.installed)
+        self.uninstall_button.setVisible(status.installed)
         self.uninstall_button.setEnabled(status.installed)
+        self.notices_widget.setVisible(status.installed)
         self.notices_button.setEnabled(status.installed)
         self.setFixedHeight(self.sizeHint().height())
 
@@ -886,9 +640,7 @@ class ScreenAiSetupDialog(QDialog):
         self.setFixedHeight(self.sizeHint().height())
 
     def _set_primary_button(self, button: QPushButton, primary: bool):
-        button.setObjectName("primaryButton" if primary else "")
-        button.style().unpolish(button)
-        button.style().polish(button)
+        set_button_variant(button, "primary" if primary else None)
 
     def _set_busy(self, busy: bool):
         for button in (

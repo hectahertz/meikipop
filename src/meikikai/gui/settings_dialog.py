@@ -1,12 +1,11 @@
 # meikikai/gui/settings_dialog.py
 from PyQt6.QtCore import QLocale, QRectF, QSize, Qt
-from PyQt6.QtGui import QColor, QFont, QIcon, QPainter, QPainterPath, QPen
+from PyQt6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen
 from PyQt6.QtWidgets import (
     QAbstractSpinBox,
     QCheckBox,
     QComboBox,
     QDialog,
-    QDialogButtonBox,
     QDoubleSpinBox,
     QFrame,
     QHBoxLayout,
@@ -20,18 +19,11 @@ from PyQt6.QtWidgets import (
 )
 
 from meikikai.config.config import APP_NAME, MIN_AUTO_SCAN_INTERVAL_SECONDS, config
+from meikikai.gui.design import DIALOG, apply_dialog_style, dialog_title, separator, set_button_variant
 from meikikai.gui.popup import Popup
 from meikikai.gui.screen_ai_setup_dialog import ScreenAiSetupDialog
 from meikikai.ocr.providers.chrome_screen_ai.component import get_screen_ai_status
 from meikikai.utils.paths import paths
-
-FONT_STACK_QSS = '"SF Pro Text", "Helvetica Neue", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif'
-DIALOG_BG = "#20232b"
-PANEL_BG = "rgba(237, 241, 247, 9)"
-PANEL_BORDER = "rgba(237, 241, 247, 24)"
-SEPARATOR_COLOR = "rgba(237, 241, 247, 18)"
-TEXT_COLOR = "#edf1f7"
-MUTED_COLOR = "#a8b0c2"
 
 
 class DecimalSpinBox(QDoubleSpinBox):
@@ -62,14 +54,14 @@ class IndicatorCheckBox(QCheckBox):
 
         rect = QRectF(2, 2, 18, 18)
         if self.isChecked():
-            background = QColor("#0a84ff")
+            background = QColor(*DIALOG.accent_rgb)
             border = QColor(75, 164, 255)
         else:
-            background = QColor(237, 241, 247, 13)
-            border = QColor(237, 241, 247, 88)
+            background = QColor(*DIALOG.neutral_rgb, 13)
+            border = QColor(*DIALOG.neutral_rgb, 88)
 
         if self.underMouse() or self.hasFocus():
-            border = QColor(10, 132, 255, 190)
+            border = QColor(*DIALOG.accent_rgb, 190)
 
         painter.setBrush(background)
         painter.setPen(QPen(border, 1.5))
@@ -82,7 +74,7 @@ class IndicatorCheckBox(QCheckBox):
             check.lineTo(15.6, 7.4)
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.setPen(QPen(
-                QColor("#ffffff"),
+                QColor(DIALOG.accent_on),
                 2.2,
                 Qt.PenStyle.SolidLine,
                 Qt.PenCapStyle.RoundCap,
@@ -104,16 +96,16 @@ class SettingsDialog(QDialog):
         self._apply_window_style()
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(18, 20, 18, 20)
+        main_layout.setContentsMargins(
+            DIALOG.window_margin_x,
+            DIALOG.window_margin_top,
+            DIALOG.window_margin_x,
+            DIALOG.window_margin_bottom,
+        )
         main_layout.setSpacing(0)
 
-        title_label = QLabel("Settings")
-        title_label.setObjectName("dialogTitle")
-        title_label.setTextFormat(Qt.TextFormat.PlainText)
-        title_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        title_label.setFixedHeight(28)
-        main_layout.addWidget(title_label)
-        main_layout.addSpacing(12)
+        main_layout.addWidget(dialog_title("Settings"))
+        main_layout.addSpacing(DIALOG.title_gap)
 
         self.max_lookup_spin = QSpinBox()
         self.max_lookup_spin.setRange(5, 100)
@@ -154,7 +146,6 @@ class SettingsDialog(QDialog):
         self.screen_ai_status_badge = QLabel()
         self.screen_ai_status_badge.setTextFormat(Qt.TextFormat.PlainText)
         self.screen_ai_setup_button = QPushButton("Manage…")
-        self.screen_ai_setup_button.setObjectName("primaryButton")
         self.screen_ai_setup_button.clicked.connect(self.open_screen_ai_setup)
         self._update_screen_ai_status_badge()
 
@@ -166,7 +157,7 @@ class SettingsDialog(QDialog):
                 self.max_lookup_spin,
             )],
         ))
-        main_layout.addSpacing(14)
+        main_layout.addSpacing(DIALOG.section_gap)
         main_layout.addWidget(self._section(
             "Scanning",
             [self._setting_row(
@@ -175,7 +166,7 @@ class SettingsDialog(QDialog):
                 self.auto_scan_interval_spin,
             )],
         ))
-        main_layout.addSpacing(14)
+        main_layout.addSpacing(DIALOG.section_gap)
         main_layout.addWidget(self._section(
             "Popup",
             [self._setting_row(
@@ -184,7 +175,7 @@ class SettingsDialog(QDialog):
                 self.popup_position_combo,
             )],
         ))
-        main_layout.addSpacing(14)
+        main_layout.addSpacing(DIALOG.section_gap)
         main_layout.addWidget(self._section(
             "OCR Engine",
             [self._setting_row(
@@ -193,7 +184,7 @@ class SettingsDialog(QDialog):
                 self._screen_ai_control(),
             )],
         ))
-        main_layout.addSpacing(14)
+        main_layout.addSpacing(DIALOG.section_gap)
         main_layout.addWidget(self._section(
             "Anki",
             [
@@ -209,7 +200,7 @@ class SettingsDialog(QDialog):
                 ),
             ],
         ))
-        main_layout.addSpacing(14)
+        main_layout.addSpacing(DIALOG.section_gap)
         main_layout.addWidget(self._section(
             "Shortcuts",
             [
@@ -229,15 +220,24 @@ class SettingsDialog(QDialog):
             ],
         ))
 
-        main_layout.addSpacing(22)
+        main_layout.addSpacing(DIALOG.footer_gap)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.save_and_accept)
-        buttons.rejected.connect(self.reject)
-        save_button = buttons.button(QDialogButtonBox.StandardButton.Save)
-        if save_button:
-            save_button.setDefault(True)
-        main_layout.addWidget(buttons, 0, Qt.AlignmentFlag.AlignRight)
+        footer = QHBoxLayout()
+        footer.setSpacing(DIALOG.action_gap)
+        footer.addStretch(1)
+
+        cancel_button = QPushButton("Cancel")
+        cancel_button.setMinimumWidth(76)
+        cancel_button.clicked.connect(self.reject)
+        footer.addWidget(cancel_button)
+
+        save_button = QPushButton("Save")
+        set_button_variant(save_button, "primary")
+        save_button.setMinimumWidth(76)
+        save_button.clicked.connect(self.save_and_accept)
+        save_button.setDefault(True)
+        footer.addWidget(save_button)
+        main_layout.addLayout(footer)
 
         self.resize(self.minimumWidth(), self.sizeHint().height())
 
@@ -264,7 +264,7 @@ class SettingsDialog(QDialog):
         control = QWidget()
         layout = QHBoxLayout(control)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout.setSpacing(DIALOG.action_gap)
         layout.addWidget(self.screen_ai_status_badge)
         layout.addWidget(self.screen_ai_setup_button)
         return control
@@ -285,106 +285,7 @@ class SettingsDialog(QDialog):
         self.screen_ai_status_badge.style().polish(self.screen_ai_status_badge)
 
     def _apply_window_style(self):
-        base_font = QFont("SF Pro Text")
-        base_font.setPixelSize(13)
-        self.setFont(base_font)
-        self.setStyleSheet(f"""
-            QDialog {{
-                background-color: {DIALOG_BG};
-                color: {TEXT_COLOR};
-                font-family: {FONT_STACK_QSS};
-                font-size: 13px;
-            }}
-            QLabel#dialogTitle {{
-                color: {TEXT_COLOR};
-                font-size: 20px;
-                font-weight: 800;
-            }}
-            QLabel#sectionLabel {{
-                color: {TEXT_COLOR};
-                font-size: 12px;
-                font-weight: 700;
-                letter-spacing: 0.2px;
-            }}
-            QLabel#settingTitle {{
-                color: {TEXT_COLOR};
-                font-size: 13px;
-                font-weight: 700;
-            }}
-            QLabel#settingDescription {{
-                color: {MUTED_COLOR};
-                font-size: 11px;
-            }}
-            QLabel#infoShortcut {{
-                background-color: rgba(10, 132, 255, 32);
-                border: 1px solid rgba(10, 132, 255, 76);
-                border-radius: 6px;
-                color: #c8e1ff;
-                font-size: 11px;
-                font-weight: 700;
-                padding: 3px 7px;
-            }}
-            QLabel#infoText {{
-                color: {MUTED_COLOR};
-                font-size: 11px;
-            }}
-            QFrame#settingsPanel {{
-                background-color: {PANEL_BG};
-                border: 1px solid {PANEL_BORDER};
-                border-radius: 12px;
-            }}
-            QFrame#rowSeparator {{
-                background-color: {SEPARATOR_COLOR};
-                border: none;
-            }}
-            QSpinBox,
-            QDoubleSpinBox,
-            QLineEdit {{
-                background-color: rgba(237, 241, 247, 13);
-                border: 1px solid rgba(237, 241, 247, 22);
-                border-radius: 7px;
-                color: {TEXT_COLOR};
-                padding: 3px 8px;
-                selection-background-color: #0a84ff;
-            }}
-            QSpinBox:focus,
-            QDoubleSpinBox:focus,
-            QLineEdit:focus {{
-                border-color: rgba(10, 132, 255, 190);
-            }}
-            QPushButton#primaryButton {{
-                background-color: #0a84ff;
-                border: 1px solid rgba(123, 193, 255, 170);
-                border-radius: 7px;
-                color: #ffffff;
-                font-weight: 650;
-                min-height: 24px;
-                padding: 3px 10px;
-            }}
-            QPushButton#primaryButton:hover {{
-                background-color: #2492ff;
-            }}
-            QPushButton#primaryButton:pressed {{
-                background-color: #006edb;
-            }}
-            QLabel#statusBadgeReady,
-            QLabel#statusBadgeWarning {{
-                border-radius: 7px;
-                font-size: 10px;
-                font-weight: 750;
-                padding: 3px 7px;
-            }}
-            QLabel#statusBadgeReady {{
-                background-color: rgba(48, 209, 88, 18);
-                border: 1px solid rgba(48, 209, 88, 70);
-                color: #9be7ae;
-            }}
-            QLabel#statusBadgeWarning {{
-                background-color: rgba(255, 204, 0, 10);
-                border: 1px solid rgba(255, 204, 0, 44);
-                color: #e8c762;
-            }}
-        """)
+        apply_dialog_style(self)
 
     def _prepare_numeric_control(self, control, width):
         control.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
@@ -413,7 +314,7 @@ class SettingsDialog(QDialog):
         section_label.setFixedHeight(18)
         section_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         section_layout.addWidget(section_label)
-        section_layout.addSpacing(8)
+        section_layout.addSpacing(DIALOG.section_label_gap)
 
         panel = QFrame()
         panel.setObjectName("settingsPanel")
@@ -433,8 +334,13 @@ class SettingsDialog(QDialog):
         row = QWidget()
         row.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         row_layout = QHBoxLayout(row)
-        row_layout.setContentsMargins(14, 9, 14, 9)
-        row_layout.setSpacing(18)
+        row_layout.setContentsMargins(
+            DIALOG.row_padding_x,
+            DIALOG.row_padding_y,
+            DIALOG.row_padding_x,
+            DIALOG.row_padding_y,
+        )
+        row_layout.setSpacing(DIALOG.row_gap)
 
         text_column = QWidget()
         text_column_layout = QVBoxLayout(text_column)
@@ -461,8 +367,13 @@ class SettingsDialog(QDialog):
         row = QWidget()
         row.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         row_layout = QHBoxLayout(row)
-        row_layout.setContentsMargins(14, 10, 14, 12)
-        row_layout.setSpacing(18)
+        row_layout.setContentsMargins(
+            DIALOG.row_padding_x,
+            DIALOG.row_padding_y,
+            DIALOG.row_padding_x,
+            DIALOG.row_padding_y,
+        )
+        row_layout.setSpacing(DIALOG.row_gap)
 
         shortcut_label = QLabel(shortcut)
         shortcut_label.setObjectName("infoShortcut")
@@ -479,10 +390,7 @@ class SettingsDialog(QDialog):
         return row
 
     def _separator(self):
-        separator = QFrame()
-        separator.setObjectName("rowSeparator")
-        separator.setFixedHeight(1)
-        return separator
+        return separator()
 
     def save_and_accept(self):
         config.max_lookup_length = self.max_lookup_spin.value()

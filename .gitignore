@@ -21,6 +21,10 @@ data/
 config.ini
 dictionary.pkl
 
+# Generated design review assets
+design/dialog-contact-sheet.png
+design/dialog-screenshots/
+
 # MacOS things
 .DS_Store
 
