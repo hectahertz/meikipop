@@ -130,9 +130,10 @@ The reader is looking away from the popup most of the time, then glances for one
 ### Content policies
 
 - Show up to 3 vocabulary entries, 3 senses per entry, and 4 glosses per sense.
-- Omitted content uses a quiet footer such as `+ 2 more entries · 2 more senses · 2 more glosses`.
+- Omitted content uses a quiet right-aligned footer such as `+2 entries · 2 senses · 2 glosses`.
 - Use thin separators only between vocabulary entries. Kanji support uses a distinct inset card because it changes information type.
-- Place omitted-content footers directly after the visible vocabulary block, before kanji support cards.
+- Place kanji support after the visible vocabulary block.
+- Place omitted-content footers at the bottom after visible vocabulary entries and kanji support.
 - Show kanji support cards only when the character belongs to the original lookup text or a visible vocabulary entry, so cards do not appear attached to omitted entries.
 - Use hanging indents for numbered senses so wrapped gloss lines align with the definition text, not the number.
 - Treat kanji `ex` and `parts` as a compact detail group: fixed label column, hanging wrapped detail text, clearer top gap after meanings, tight leading, and only a small gap between detail rows.

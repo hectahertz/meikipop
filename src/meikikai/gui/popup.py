@@ -382,19 +382,19 @@ class Popup(QWidget):
             hidden_sense_count += omitted_senses
             hidden_gloss_count += omitted_glosses
 
-        hidden_vocab_count = max(0, len(vocab_entries) - len(visible_vocab_entries))
-        footer = self._omission_footer(hidden_vocab_count, hidden_sense_count, hidden_gloss_count)
-        if footer:
-            if layout.count() > 0:
-                layout.addSpacing(self._tokens.footer_before_gap)
-            layout.addWidget(footer)
-
         visible_kanji = self._visible_kanji_characters(data, visible_vocab_entries)
         visible_kanji_entries = [
             entry for entry in kanji_entries
             if not visible_kanji or entry.character in visible_kanji
         ]
         self._add_kanji_entries(layout, visible_kanji_entries)
+
+        hidden_vocab_count = max(0, len(vocab_entries) - len(visible_vocab_entries))
+        footer = self._omission_footer(hidden_vocab_count, hidden_sense_count, hidden_gloss_count)
+        if footer:
+            if layout.count() > 0:
+                layout.addSpacing(self._tokens.footer_before_gap)
+            layout.addWidget(footer)
 
         self._finalize_fixed_height(content)
         self._replace_content_widget(content)
@@ -599,14 +599,16 @@ class Popup(QWidget):
     ) -> QLabel | None:
         parts = []
         if hidden_vocab_count:
-            parts.append(self._plural(hidden_vocab_count, "more entry", "more entries"))
+            parts.append(self._plural(hidden_vocab_count, "entry", "entries"))
         if hidden_sense_count:
-            parts.append(self._plural(hidden_sense_count, "more sense", "more senses"))
+            parts.append(self._plural(hidden_sense_count, "sense", "senses"))
         if hidden_gloss_count:
-            parts.append(self._plural(hidden_gloss_count, "more gloss", "more glosses"))
+            parts.append(self._plural(hidden_gloss_count, "gloss", "glosses"))
         if not parts:
             return None
-        return self._metadata_label(f'+ {" · ".join(parts)}', color=self._tokens.omission_text)
+        label = self._metadata_label(f'+{" · ".join(parts)}', color=self._tokens.omission_text)
+        label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        return label
 
     def _entry_definition_parts(self, entry: DictionaryEntry) -> tuple[list[str], int, int]:
         sense_parts = []
@@ -742,9 +744,8 @@ class Popup(QWidget):
             chip_layout.addWidget(self._plain_label(
                 entry.character,
                 self._tokens.word_text,
-                14,
+                self._tokens.word_font_size,
                 QFont.Weight.DemiBold,
-                22,
             ))
             if entry.readings:
                 chip_layout.addWidget(self._plain_label(

@@ -29,7 +29,7 @@ OUTPUT_DIR = ROOT / "design" / "popup-screenshots"
 CONTACT_SHEET = ROOT / "design" / "popup-contact-sheet.png"
 README_COMPACT = ROOT / "design" / "meikikai_popup_compact.png"
 README_STANDARD = ROOT / "design" / "meikikai_popup_standard.png"
-README_COMPLETE = ROOT / "design" / "meikikai_popup_mockup.png"
+README_COMPLETE = ROOT / "design" / "meikikai_popup_complete.png"
 README_THEME_ASSETS = {
     "nazeka": ROOT / "design" / "meikikai_popup_theme_nazeka.png",
     "nord": ROOT / "design" / "meikikai_popup_theme_nord.png",
