@@ -114,9 +114,17 @@ class Lookup(threading.Thread):
 
         results = self._do_lookup(text)
 
-        # Append bundled kanji data for each unique kanji in the best matched word.
-        # If no vocabulary entry matched, preserve the old single-character fallback.
-        kanji_source = results[0].written_form if results else text[:1]
+        # Append bundled kanji data for each unique kanji in the matched surface first.
+        # Fall back to the headword for kana-only matches, then to the hovered character
+        # when no vocabulary entry matched.
+        if results:
+            matched_text = results[0].matched_text
+            if KANJI_REGEX.search(matched_text):
+                kanji_source = matched_text
+            else:
+                kanji_source = results[0].written_form
+        else:
+            kanji_source = text[:1]
         seen_kanji = set()
         for match in KANJI_REGEX.finditer(kanji_source):
             character = match.group(0)
