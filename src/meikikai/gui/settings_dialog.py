@@ -168,15 +168,15 @@ class SettingsDialog(QDialog):
         self._prepare_popup_control(self.popup_glosses_combo)
 
         self.popup_mode_map = {
-            "Visual Novel Mode": "visual_novel_mode",
-            "Flip Both": "flip_both",
-            "Flip Vertically": "flip_vertically",
-            "Flip Horizontally": "flip_horizontally",
+            "Smart around cursor": "visual_novel_mode",
+            "Lower right, flip at edges": "flip_both",
+            "Right side, flip upward": "flip_vertically",
+            "Below cursor, flip left": "flip_horizontally",
         }
         self.popup_position_combo = QComboBox()
         self.popup_position_combo.addItems(list(self.popup_mode_map.keys()))
         current_friendly_name = next(
-            (k for k, v in self.popup_mode_map.items() if v == config.popup_position_mode), "Visual Novel Mode"
+            (k for k, v in self.popup_mode_map.items() if v == config.popup_position_mode), "Smart around cursor"
         )
         self.popup_position_combo.setCurrentText(current_friendly_name)
         self._prepare_popup_control(self.popup_position_combo)
@@ -242,7 +242,7 @@ class SettingsDialog(QDialog):
                 ),
                 self._setting_row(
                     "Placement",
-                    "Where the popup appears near the cursor.",
+                    "Default side near the cursor; edge-aware modes stay on screen.",
                     self.popup_position_combo,
                 ),
             ],
