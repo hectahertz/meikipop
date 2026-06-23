@@ -1,6 +1,6 @@
 # MeikiKai
 
-MeikiKai is a macOS Japanese OCR popup dictionary. Hover Japanese text anywhere on screen to see dictionary entries, kanji details, and deconjugation results.
+MeikiKai is a macOS Japanese OCR popup dictionary. Hover over Japanese text anywhere on screen to see dictionary entries, kanji details, and deconjugation results.
 
 <p align="center">
   <img width="496" alt="MeikiKai popup example" src="design/meikikai_popup_mockup.png">
@@ -8,19 +8,19 @@ MeikiKai is a macOS Japanese OCR popup dictionary. Hover Japanese text anywhere 
 
 Forked from [rtr46/meikipop](https://github.com/rtr46/meikipop).
 
-## MeikiKai highlights
+## Highlights
 
-- **Dark redesigned popup** with kanji cards, frequency, tags, and deconjugation details.
+- **Redesigned dark popup** with kanji cards, frequency, tags, and deconjugation details.
 - **Configurable popup themes and layouts** for compact, balanced, or complete dictionary detail.
 - **Cleaner settings window** for lookup, scanning, popup theme/layout, popup placement, and AnkiConnect.
-- **macOS-only app flow** with menu bar controls and fullscreen/Spaces-friendly popup behavior.
+- **macOS-only app flow** with menu bar controls and popup behavior that works across fullscreen apps and Spaces.
 - **One-display or all-displays scanning** from the menu bar.
 - **Optional media auto-pause** while dictionary results are visible.
-- **Direct Anki export** through AnkiConnect with automatic deck/note type setup and optional screenshot images.
+- **Direct Anki export** through AnkiConnect, with automatic deck/note type setup and optional screenshots.
 
 ## Popup layouts
 
-Choose how much structure the popup uses without shrinking the core text scale. Layout controls visual shape and kanji presentation. Entry, sense, and gloss counts are separate settings.
+Choose how much structure the popup shows without changing the core text scale. Layout controls the popup shape and kanji presentation. Entry, sense, and gloss counts are separate settings.
 
 <table>
   <tr>
@@ -37,7 +37,7 @@ Choose how much structure the popup uses without shrinking the core text scale. 
 
 ## Popup themes
 
-Nord is the default popup theme. Nazeka keeps the Meikipop/MeikiKai default lineage, while Catppuccin and Kanagawa Wave provide softer editor-inspired alternatives.
+Nord is the default popup theme. Nazeka follows the Meikipop/MeikiKai default style, while Catppuccin and Kanagawa Wave offer editor-inspired alternatives.
 
 <table>
   <tr>
@@ -115,7 +115,7 @@ meikikai
 
 The default dictionary is downloaded on first run if `dictionary.pkl` is missing.
 
-On first launch, MeikiKai opens OCR Setup if Chrome Screen AI is missing. MeikiKai does not bundle or automatically download Chrome Screen AI; choose **Download Chrome Screen AI…** explicitly to enable OCR. After installation, the same setup window provides reinstall/update, notices, and uninstall actions.
+On first launch, MeikiKai opens OCR Setup if Chrome Screen AI is missing. MeikiKai does not bundle or automatically download Chrome Screen AI. Choose **Download Chrome Screen AI…** to enable OCR. After installation, the same setup window provides reinstall/update, notices, and uninstall actions.
 
 ## Usage
 
