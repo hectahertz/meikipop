@@ -20,11 +20,17 @@ from PIL import Image, ImageDraw, ImageFont  # noqa: E402
 from PyQt6.QtCore import Qt  # noqa: E402
 from PyQt6.QtWidgets import QApplication  # noqa: E402
 
+from meikikai.config.config import config  # noqa: E402
 from meikikai.dictionary.lookup import DictionaryEntry, KanjiEntry  # noqa: E402
 from meikikai.gui.popup import Popup  # noqa: E402
 
 OUTPUT_DIR = ROOT / "design" / "popup-screenshots"
 CONTACT_SHEET = ROOT / "design" / "popup-contact-sheet.png"
+README_COMPACT = ROOT / "design" / "meikikai_popup_compact.png"
+README_STANDARD = ROOT / "design" / "meikikai_popup_standard.png"
+README_COMPLETE = ROOT / "design" / "meikikai_popup_mockup.png"
+LAYOUT_OPTIONS_DIR = OUTPUT_DIR / "layout-options"
+LAYOUT_OPTIONS_CONTACT_SHEET = LAYOUT_OPTIONS_DIR / "contact-sheet.png"
 
 
 class DummyLock:
@@ -208,38 +214,41 @@ def nature_entries() -> list[DictionaryEntry | KanjiEntry]:
     ]
 
 
-def tall_entries() -> list[DictionaryEntry | KanjiEntry]:
+def omitted_kanji_entries() -> list[DictionaryEntry | KanjiEntry]:
     return [
         DictionaryEntry(
             id=10,
-            written_form="か",
-            reading="か",
+            written_form="行く",
+            reading="いく",
             senses=[
-                {"glosses": ["question particle", "indicates a question", "marks doubt", "used at sentence end", "whether"], "pos": ["prt"], "tags": []},
-                {"glosses": ["or", "alternatively", "some", "one of"], "pos": ["prt"], "tags": []},
-                {"glosses": ["indicates uncertainty", "maybe", "perhaps", "I wonder"], "pos": ["prt"], "tags": []},
-                {"glosses": ["emphasis", "surprise", "disbelief"], "pos": ["prt"], "tags": []},
-                {"glosses": ["archaic exclamation", "poetic ending"], "pos": ["prt"], "tags": ["archaism"]},
+                {"glosses": ["to go", "to move", "to proceed"], "pos": ["v5k-s", "vi"], "tags": []},
+                {"glosses": ["to pass through", "to reach", "to come to"], "pos": ["v5k-s", "vi"], "tags": []},
+                {"glosses": ["to be satisfied", "to be successful", "to work out"], "pos": ["v5k-s", "vi"], "tags": []},
+                {"glosses": ["to die", "to pass away"], "pos": ["v5k-s", "vi"], "tags": ["euphemistic"]},
             ],
-            freq=42,
+            freq=55,
             deconjugation_process=(),
         ),
-        vocab("蚊", "か", ["mosquito"], pos=("n",), freq=6400),
-        vocab("課", "か", ["lesson", "section", "department", "division", "counter for lessons"], pos=("n",), freq=7100),
-        vocab("可", "か", ["passable", "acceptable", "permitted", "approval"], pos=("n",), freq=12200),
-        vocab("化", "か", ["-ization", "action of making something", "change into", "influence"], pos=("suf",), freq=2300),
+        vocab("行う", "おこなう", ["to perform", "to carry out", "to conduct", "to hold"], pos=("v5u", "vt"), freq=890),
+        vocab("旅行", "りょこう", ["travel", "trip", "journey", "tour"], pos=("n", "vs"), freq=1200),
+        vocab("銀行", "ぎんこう", ["bank", "banking institution", "financial institution"], pos=("n",), freq=900),
+        vocab("行列", "ぎょうれつ", ["line", "queue", "procession", "matrix"], pos=("n",), freq=5000),
         KanjiEntry(
-            character="可",
-            meanings=["can", "passable", "mustn't", "should not", "do not"],
-            readings=["カ", "べ.き", "べ.し"],
+            character="行",
+            meanings=["go", "journey", "conduct", "line", "row"],
+            readings=["コウ", "ギョウ", "い.く", "おこな.う"],
             examples=[
-                {"w": "可能", "r": "かのう", "m": "possible"},
-                {"w": "許可", "r": "きょか", "m": "permission"},
-                {"w": "可愛い", "r": "かわいい", "m": "cute"},
+                {"w": "行く", "r": "いく", "m": "to go"},
+                {"w": "旅行", "r": "りょこう", "m": "travel"},
+                {"w": "銀行", "r": "ぎんこう", "m": "bank"},
             ],
-            components=[{"c": "口", "m": "mouth"}, {"c": "丁", "m": "street"}],
+            components=[{"c": "彳", "m": "step"}, {"c": "亍", "m": "step"}],
         ),
     ]
+
+
+def tall_entries() -> list[DictionaryEntry | KanjiEntry]:
+    return omitted_kanji_entries()
 
 
 def samples() -> list[PopupSample]:
@@ -247,7 +256,7 @@ def samples() -> list[PopupSample]:
         PopupSample("mockup", "01-vocab-deconjugation-kanji", mockup_entries),
         PopupSample("long", "02-long-inflection", long_entries),
         PopupSample("nature", "03-multiple-kanji", nature_entries),
-        PopupSample("tall", "04-omitted-results", tall_entries),
+        PopupSample("tall", "04-omitted-results", omitted_kanji_entries),
     ]
 
 
@@ -384,6 +393,80 @@ def render_all(output_dir: Path, contact_sheet: Path, columns: int) -> list[Path
     return rendered
 
 
+def _render_layout_cases(cases, output_for_case) -> list[tuple[Path, int, int]]:
+    original = (
+        config.popup_layout,
+        config.popup_vocab_entries,
+        config.popup_senses_per_entry,
+        config.popup_glosses_per_sense,
+    )
+    rendered = []
+    try:
+        for index, (layout, entries, senses, glosses, sample_name, factory) in enumerate(cases, 1):
+            config.popup_layout = layout
+            config.popup_vocab_entries = entries
+            config.popup_senses_per_entry = senses
+            config.popup_glosses_per_sense = glosses
+            output = output_for_case(index, layout, entries, senses, glosses, sample_name)
+            width, height = render(factory(), output)
+            rendered.append((output, width, height))
+    finally:
+        (
+            config.popup_layout,
+            config.popup_vocab_entries,
+            config.popup_senses_per_entry,
+            config.popup_glosses_per_sense,
+        ) = original
+    return rendered
+
+
+def render_readme_layout_assets() -> list[tuple[Path, int, int]]:
+    cases = [
+        ("compact", 1, 2, 2, "single-kanji", mockup_entries),
+        ("standard", 1, 2, 3, "single-kanji", mockup_entries),
+        ("complete", 2, 3, 4, "single-kanji", mockup_entries),
+    ]
+    outputs = {
+        "compact": README_COMPACT,
+        "standard": README_STANDARD,
+        "complete": README_COMPLETE,
+    }
+    return _render_layout_cases(
+        cases,
+        lambda _index, layout, _entries, _senses, _glosses, _sample_name: outputs[layout],
+    )
+
+
+def layout_option_cases():
+    return [
+        ("compact", 1, 1, 1, "single-kanji", mockup_entries),
+        ("compact", 1, 2, 2, "single-kanji", mockup_entries),
+        ("compact", 3, 2, 2, "omitted-kanji", omitted_kanji_entries),
+        ("standard", 1, 1, 1, "multi-kanji", nature_entries),
+        ("standard", 2, 2, 3, "multi-kanji", nature_entries),
+        ("standard", 3, 2, 2, "omitted-kanji", omitted_kanji_entries),
+        ("complete", 1, 1, 1, "single-kanji", mockup_entries),
+        ("complete", 2, 3, 4, "single-kanji", mockup_entries),
+        ("complete", 3, 2, 2, "omitted-kanji", omitted_kanji_entries),
+    ]
+
+
+def render_layout_options(
+    output_dir: Path = LAYOUT_OPTIONS_DIR,
+    contact_sheet: Path = LAYOUT_OPTIONS_CONTACT_SHEET,
+    columns: int = 3,
+) -> list[Path]:
+    rendered = _render_layout_cases(
+        layout_option_cases(),
+        lambda index, layout, entries, senses, glosses, sample_name: output_dir / (
+            f"{index:02d}-{layout}-{entries}e-{senses}s-{glosses}g-{sample_name}.png"
+        ),
+    )
+    images = [image for image, _width, _height in rendered]
+    make_contact_sheet(images, contact_sheet, columns=columns)
+    return images
+
+
 def _sample_by_key(key: str) -> PopupSample:
     for sample in samples():
         if sample.key == key:
@@ -396,21 +479,35 @@ def main() -> int:
     parser.add_argument(
         "case",
         nargs="?",
-        choices=("all", "mockup", "long", "switch", "tall", "nature"),
+        choices=("all", "mockup", "long", "switch", "tall", "nature", "readme-layouts", "layout-options"),
         default="all",
         help="Sample state to render. Default: all review states and a contact sheet.",
     )
     parser.add_argument("-o", "--output", type=Path, default=None, help="Output PNG path for single-case renders.")
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR, help="Output directory for all popup samples.")
     parser.add_argument("--contact-sheet", type=Path, default=CONTACT_SHEET, help="Output contact sheet path for all samples.")
-    parser.add_argument("--columns", type=int, default=2, help="Contact sheet column count.")
+    parser.add_argument("--columns", type=int, default=None, help="Contact sheet column count.")
     args = parser.parse_args()
 
     if args.case == "all":
-        rendered = render_all(args.output_dir, args.contact_sheet, columns=args.columns)
+        rendered = render_all(args.output_dir, args.contact_sheet, columns=args.columns or 2)
         for image in rendered:
             print(image.relative_to(ROOT))
         print(args.contact_sheet.relative_to(ROOT))
+        return 0
+
+    if args.case == "readme-layouts":
+        for image, width, height in render_readme_layout_assets():
+            print(f"{image.relative_to(ROOT)} ({width}x{height})")
+        return 0
+
+    if args.case == "layout-options":
+        output_dir = args.output_dir if args.output_dir != OUTPUT_DIR else LAYOUT_OPTIONS_DIR
+        contact_sheet = args.contact_sheet if args.contact_sheet != CONTACT_SHEET else output_dir / "contact-sheet.png"
+        rendered = render_layout_options(output_dir, contact_sheet, columns=args.columns or 3)
+        for image in rendered:
+            print(image.relative_to(ROOT))
+        print(contact_sheet.relative_to(ROOT))
         return 0
 
     output = args.output or Path(f"/tmp/meikikai_popup_{args.case}.png")

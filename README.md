@@ -11,11 +11,29 @@ Forked from [rtr46/meikipop](https://github.com/rtr46/meikipop).
 ## MeikiKai highlights
 
 - **Dark redesigned popup** with kanji cards, frequency, tags, and deconjugation details.
-- **Cleaner settings window** for lookup, scanning, popup placement, and AnkiConnect.
+- **Configurable popup layouts** for compact, balanced, or complete dictionary detail.
+- **Cleaner settings window** for lookup, scanning, popup layout, popup placement, and AnkiConnect.
 - **macOS-only app flow** with menu bar controls and fullscreen/Spaces-friendly popup behavior.
 - **One-display or all-displays scanning** from the menu bar.
 - **Optional media auto-pause** while dictionary results are visible.
 - **Direct Anki export** through AnkiConnect with automatic deck/note type setup and optional screenshot images.
+
+## Popup layouts
+
+Choose how much structure the popup uses without shrinking the core text scale. Layout controls visual shape and kanji presentation. Entry, sense, and gloss counts are separate settings.
+
+<table>
+  <tr>
+    <th>Compact</th>
+    <th>Standard</th>
+    <th>Complete</th>
+  </tr>
+  <tr>
+    <td><img width="240" alt="MeikiKai Compact popup layout" src="design/meikikai_popup_compact.png"></td>
+    <td><img width="292" alt="MeikiKai Standard popup layout" src="design/meikikai_popup_standard.png"></td>
+    <td><img width="344" alt="MeikiKai Complete popup layout" src="design/meikikai_popup_mockup.png"></td>
+  </tr>
+</table>
 
 ## Direct Anki export
 
@@ -33,6 +51,7 @@ Create Anki recognition cards from the visible top vocabulary entry, with popup-
 - Supports horizontal and vertical Japanese text.
 - Looks up vocabulary with JMdict-style senses, deconjugation, frequency rank, part-of-speech, and tags.
 - Shows kanji details, readings, meanings, examples, and components.
+- Lets you choose Compact, Standard, or Complete popup layout, plus visible entries, senses, and glosses independently.
 - Imports Yomitan/Yomichan dictionaries.
 - Scans one selected display or all displays.
 - Stays visible across macOS Spaces and fullscreen apps.
@@ -92,6 +111,10 @@ Settings are saved to `~/Library/Application Support/meikikai/config.ini`.
 
 - **Maximum lookup length**: how many OCR characters are kept before dictionary lookup.
 - **Scan cooldown**: minimum delay between OCR scans.
+- **Popup layout**: choose Compact, Standard, or Complete. Complete preserves the full default popup.
+- **Entries shown**: choose how many vocabulary entries appear before the omitted-entry footer.
+- **Senses per entry**: choose how many numbered definition groups appear for each vocabulary entry.
+- **Glosses per sense**: choose how many comma-separated translation glosses appear inside each sense.
 - **Popup placement**: choose visual novel mode or flipped placement around the cursor.
 - **OCR Engine**: install, reinstall/update, inspect, view notices for, or uninstall the Chrome Screen AI component used by OCR.
 - **AnkiConnect URL**: defaults to `http://127.0.0.1:8765`.
@@ -136,10 +159,16 @@ Imports overwrite `~/Library/Application Support/meikikai/dictionary.pkl`.
 
 ## Development
 
-Regenerate the README popup image:
+Regenerate the README popup images:
 
 ```bash
-.venv/bin/python scripts/render_popup_sample.py mockup -o design/meikikai_popup_mockup.png
+.venv/bin/python scripts/render_popup_sample.py readme-layouts
+```
+
+Render popup layout option samples and contact sheet for UI review:
+
+```bash
+.venv/bin/python scripts/render_popup_sample.py layout-options
 ```
 
 Render Anki card samples for UI review:

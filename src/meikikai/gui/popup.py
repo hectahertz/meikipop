@@ -64,12 +64,6 @@ logger = logging.getLogger(__name__)
 FONT_FAMILY = POPUP.font_family
 FONT_STACK_QSS = POPUP.font_stack_qss
 
-POPUP_WIDTH = POPUP.width
-CONTENT_MARGIN_LEFT = POPUP.content_margin_left
-CONTENT_MARGIN_TOP = POPUP.content_margin_top
-CONTENT_MARGIN_RIGHT = POPUP.content_margin_right
-CONTENT_MARGIN_BOTTOM = POPUP.content_margin_bottom
-CONTENT_WIDTH = POPUP.content_width
 SHADOW_MARGIN = POPUP.shadow_margin
 
 TEXT_COLOR = POPUP.text
@@ -93,9 +87,6 @@ DEFINITION_FONT_SIZE = POPUP.definition_font_size
 META_FONT_SIZE = POPUP.metadata_font_size
 DETAIL_FONT_SIZE = POPUP.detail_font_size
 
-MAX_VOCAB_ENTRIES = POPUP.max_vocab_entries
-MAX_SENSES_PER_ENTRY = POPUP.max_senses_per_entry
-MAX_GLOSSES_PER_SENSE = POPUP.max_glosses_per_sense
 
 
 class FlowLayout(QLayout):
@@ -210,6 +201,7 @@ class Popup(QWidget):
         self._auto_pause_media_triggered = False
         self._auto_pause_media_resume_deferred = False
         self._suppress_next_focus_restore = False
+        self._layout_tier = self._current_layout_tier()
 
         self.shared_state = shared_state
 
@@ -242,22 +234,53 @@ class Popup(QWidget):
         self.frame = QFrame()
         self.frame.setFrameShape(QFrame.Shape.NoFrame)
         self.frame.setObjectName("popupFrame")
-        self.frame.setFixedWidth(POPUP_WIDTH)
+        self.frame.setFixedWidth(self._popup_width())
         self._apply_frame_stylesheet()
         main_layout.addWidget(self.frame)
 
         self.content_layout = QVBoxLayout(self.frame)
         self.content_layout.setContentsMargins(
-            CONTENT_MARGIN_LEFT,
-            CONTENT_MARGIN_TOP,
-            CONTENT_MARGIN_RIGHT,
-            CONTENT_MARGIN_BOTTOM,
+            self._layout_tier.content_margin_left,
+            self._layout_tier.content_margin_top,
+            self._layout_tier.content_margin_right,
+            self._layout_tier.content_margin_bottom,
         )
         self.content_layout.setSpacing(0)
         self.content_widget = None
 
         self.hide()
         self._configure_macos_window()
+
+    def _current_layout_tier(self):
+        return POPUP.layout_tier(config.popup_layout)
+
+    def _sync_layout_tier(self):
+        self._layout_tier = self._current_layout_tier()
+        self.frame.setFixedWidth(self._popup_width())
+        self.content_layout.setContentsMargins(
+            self._layout_tier.content_margin_left,
+            self._layout_tier.content_margin_top,
+            self._layout_tier.content_margin_right,
+            self._layout_tier.content_margin_bottom,
+        )
+
+    def _popup_width(self) -> int:
+        return self._layout_tier.width
+
+    def _content_width(self) -> int:
+        return self._layout_tier.content_width
+
+    @staticmethod
+    def _vocab_entries() -> int:
+        return config.popup_vocab_entries
+
+    @staticmethod
+    def _senses_per_entry() -> int:
+        return config.popup_senses_per_entry
+
+    @staticmethod
+    def _glosses_per_sense() -> int:
+        return config.popup_glosses_per_sense
 
     def _apply_frame_stylesheet(self):
         self.frame.setStyleSheet(popup_frame_stylesheet())
@@ -340,9 +363,11 @@ class Popup(QWidget):
             self.hide_popup()
 
     def _set_entries(self, data: Optional[LookupResult | List[DictionaryEntry | KanjiEntry]]):
+        self._sync_layout_tier()
         entries = self._entries_from_data(data)
+        content_width = self._content_width()
         content = QWidget()
-        content.setFixedWidth(CONTENT_WIDTH)
+        content.setFixedWidth(content_width)
         content.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         content.setStyleSheet(transparent_stylesheet())
 
@@ -352,7 +377,7 @@ class Popup(QWidget):
 
         vocab_entries = [entry for entry in entries or [] if isinstance(entry, DictionaryEntry)]
         kanji_entries = [entry for entry in entries or [] if isinstance(entry, KanjiEntry)]
-        visible_vocab_entries = vocab_entries[:MAX_VOCAB_ENTRIES]
+        visible_vocab_entries = vocab_entries[:self._vocab_entries()]
 
         hidden_sense_count = 0
         hidden_gloss_count = 0
@@ -372,15 +397,36 @@ class Popup(QWidget):
             layout.addWidget(footer)
 
         visible_kanji = self._visible_kanji_characters(data, visible_vocab_entries)
-        for entry in kanji_entries:
-            if visible_kanji and entry.character not in visible_kanji:
-                continue
-            if layout.count() > 0:
-                layout.addSpacing(POPUP.kanji_before_gap)
-            layout.addWidget(self._kanji_card(entry))
+        visible_kanji_entries = [
+            entry for entry in kanji_entries
+            if not visible_kanji or entry.character in visible_kanji
+        ]
+        self._add_kanji_entries(layout, visible_kanji_entries)
 
         self._finalize_fixed_height(content)
         self._replace_content_widget(content)
+
+    def _add_kanji_entries(self, layout: QVBoxLayout, entries: list[KanjiEntry]):
+        if not entries:
+            return
+
+        presentation = self._layout_tier.kanji_presentation
+        if presentation == "full":
+            for entry in entries:
+                if layout.count() > 0:
+                    layout.addSpacing(POPUP.kanji_before_gap)
+                layout.addWidget(self._kanji_card(entry, include_details=True))
+            return
+
+        if layout.count() > 0:
+            layout.addSpacing(POPUP.kanji_before_gap)
+
+        if presentation == "chip":
+            layout.addWidget(self._kanji_chipline(entries))
+        elif len(entries) == 1:
+            layout.addWidget(self._kanji_card(entries[0], include_details=False))
+        else:
+            layout.addWidget(self._kanji_strip(entries))
 
     def _replace_content_widget(self, content: QWidget):
         old_content = self.content_widget
@@ -400,8 +446,9 @@ class Popup(QWidget):
         margins = self.content_layout.contentsMargins()
         content_height = self.content_widget.height() if self.content_widget else 0
         height = margins.top() + content_height + margins.bottom() + 2
-        self.frame.setFixedSize(POPUP_WIDTH, height)
-        self.setFixedSize(POPUP_WIDTH + SHADOW_MARGIN * 2, height + SHADOW_MARGIN * 2)
+        popup_width = self._popup_width()
+        self.frame.setFixedSize(popup_width, height)
+        self.setFixedSize(popup_width + SHADOW_MARGIN * 2, height + SHADOW_MARGIN * 2)
 
     def _finalize_fixed_height(self, widget: QWidget):
         layout = widget.layout()
@@ -439,8 +486,10 @@ class Popup(QWidget):
         color: str,
         size: int,
         weight: QFont.Weight = QFont.Weight.Normal,
-        max_width: int = CONTENT_WIDTH,
+        max_width: int | None = None,
     ) -> QLabel:
+        if max_width is None:
+            max_width = self._content_width()
         label = QLabel(text)
         label.setTextFormat(Qt.TextFormat.PlainText)
         label.setFont(self._font(size, weight))
@@ -463,7 +512,9 @@ class Popup(QWidget):
         label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         return label
 
-    def _metadata_label(self, html: str, width: int = CONTENT_WIDTH, color: str = META_COLOR) -> QLabel:
+    def _metadata_label(self, html: str, width: int | None = None, color: str = META_COLOR) -> QLabel:
+        if width is None:
+            width = self._content_width()
         return self._rich_label(
             f'<span style="color:{color}; font-size:{META_FONT_SIZE}px; line-height:125%;">{html}</span>',
             color,
@@ -473,10 +524,12 @@ class Popup(QWidget):
 
     def _flow_container(
         self,
-        width: int = CONTENT_WIDTH,
+        width: int | None = None,
         h_spacing: int = 7,
         v_spacing: int = 5,
     ) -> tuple[QWidget, FlowLayout]:
+        if width is None:
+            width = self._content_width()
         container = QWidget()
         container.setFixedWidth(width)
         container.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -506,7 +559,7 @@ class Popup(QWidget):
         for sense in entry.senses:
             if sense.get('glosses'):
                 shown_senses.append(sense)
-            if len(shown_senses) >= MAX_SENSES_PER_ENTRY:
+            if len(shown_senses) >= self._senses_per_entry():
                 break
 
         pos_values = self._unique_sense_values(shown_senses, 'pos')
@@ -568,16 +621,19 @@ class Popup(QWidget):
             if not glosses:
                 continue
 
-            shown_glosses = glosses[:MAX_GLOSSES_PER_SENSE]
-            hidden_gloss_count += max(0, len(glosses) - MAX_GLOSSES_PER_SENSE)
+            glosses_per_sense = self._glosses_per_sense()
+            shown_glosses = glosses[:glosses_per_sense]
+            hidden_gloss_count += max(0, len(glosses) - glosses_per_sense)
             sense_parts.append(", ".join(shown_glosses))
 
-        hidden_sense_count = max(0, len(sense_parts) - MAX_SENSES_PER_ENTRY)
-        return sense_parts[:MAX_SENSES_PER_ENTRY], hidden_sense_count, hidden_gloss_count
+        senses_per_entry = self._senses_per_entry()
+        hidden_sense_count = max(0, len(sense_parts) - senses_per_entry)
+        return sense_parts[:senses_per_entry], hidden_sense_count, hidden_gloss_count
 
     def _numbered_definitions(self, sense_parts: list[str]) -> QWidget:
+        content_width = self._content_width()
         container = QWidget()
-        container.setFixedWidth(CONTENT_WIDTH)
+        container.setFixedWidth(content_width)
         container.setStyleSheet(transparent_stylesheet())
         container.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
@@ -586,10 +642,10 @@ class Popup(QWidget):
         layout.setSpacing(POPUP.definition_row_gap)
 
         number_width = POPUP.definition_number_width
-        text_width = CONTENT_WIDTH - number_width - POPUP.definition_number_gap
+        text_width = content_width - number_width - POPUP.definition_number_gap
         for index, sense_text in enumerate(sense_parts, 1):
             row = QWidget()
-            row.setFixedWidth(CONTENT_WIDTH)
+            row.setFixedWidth(content_width)
             row.setStyleSheet(transparent_stylesheet())
             row_layout = QHBoxLayout(row)
             row_layout.setContentsMargins(0, 0, 0, 0)
@@ -613,8 +669,9 @@ class Popup(QWidget):
         return container
 
     def _dictionary_entry(self, entry: DictionaryEntry) -> tuple[QWidget, int, int]:
+        content_width = self._content_width()
         entry_widget = QWidget()
-        entry_widget.setFixedWidth(CONTENT_WIDTH)
+        entry_widget.setFixedWidth(content_width)
         entry_widget.setStyleSheet(transparent_stylesheet())
 
         layout = QVBoxLayout(entry_widget)
@@ -635,31 +692,31 @@ class Popup(QWidget):
                 READING_FONT_SIZE,
                 QFont.Weight.Medium,
             ))
-        self._finalize_flow_container(row, row_layout, CONTENT_WIDTH)
+        self._finalize_flow_container(row, row_layout, content_width)
         layout.addWidget(row)
 
         metadata, deconj = self._entry_metadata(entry)
-        if metadata:
+        shown_metadata = metadata if self._layout_tier.show_metadata else []
+        shown_deconj = deconj if self._layout_tier.show_deconjugation else ""
+        if shown_metadata:
             layout.addSpacing(POPUP.entry_meta_gap)
-            layout.addWidget(self._metadata_label(self._metadata_html(metadata)))
-        if deconj:
+            layout.addWidget(self._metadata_label(self._metadata_html(shown_metadata)))
+        if shown_deconj:
             layout.addSpacing(POPUP.entry_deconjugation_gap)
-            layout.addWidget(self._metadata_label(self._deconjugation_html(deconj), color=DECONJ_COLOR))
+            layout.addWidget(self._metadata_label(self._deconjugation_html(shown_deconj), color=DECONJ_COLOR))
 
         definition_parts, hidden_sense_count, hidden_gloss_count = self._entry_definition_parts(entry)
         if definition_parts:
-            layout.addSpacing(POPUP.entry_definition_gap if metadata or deconj else POPUP.entry_definition_gap_without_meta)
-            if len(definition_parts) == 1:
-                layout.addWidget(self._rich_label(definition_parts[0], DEFINITION_COLOR, DEFINITION_FONT_SIZE, CONTENT_WIDTH))
-            else:
-                layout.addWidget(self._numbered_definitions(definition_parts))
+            has_metadata = bool(shown_metadata or shown_deconj)
+            layout.addSpacing(POPUP.entry_definition_gap if has_metadata else POPUP.entry_definition_gap_without_meta)
+            layout.addWidget(self._numbered_definitions(definition_parts))
 
         self._finalize_fixed_height(entry_widget)
         return entry_widget, hidden_sense_count, hidden_gloss_count
 
     def _separator(self) -> QWidget:
         container = QWidget()
-        container.setFixedWidth(CONTENT_WIDTH)
+        container.setFixedWidth(self._content_width())
         container.setFixedHeight(13)
         container.setStyleSheet(transparent_stylesheet())
 
@@ -673,10 +730,143 @@ class Popup(QWidget):
         layout.addWidget(line)
         return container
 
-    def _kanji_card(self, entry: KanjiEntry) -> QFrame:
+    def _kanji_chipline(self, entries: list[KanjiEntry]) -> QWidget:
+        content_width = self._content_width()
+        container, layout = self._flow_container(width=content_width, h_spacing=5, v_spacing=5)
+        for entry in entries:
+            chip = QFrame()
+            chip.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            chip.setStyleSheet(
+                f"background-color: {POPUP.kanji_card_bg}; "
+                f"border: 1px solid {POPUP.kanji_card_border}; "
+                "border-radius: 11px;"
+            )
+            chip_layout = QHBoxLayout(chip)
+            chip_layout.setContentsMargins(7, 4, 7, 4)
+            chip_layout.setSpacing(4)
+            chip_layout.addWidget(self._plain_label(
+                entry.character,
+                WORD_COLOR,
+                14,
+                QFont.Weight.DemiBold,
+                22,
+            ))
+            if entry.readings:
+                chip_layout.addWidget(self._plain_label(
+                    f"[{entry.readings[0]}]",
+                    READING_COLOR,
+                    META_FONT_SIZE,
+                    QFont.Weight.DemiBold,
+                    content_width,
+                ))
+            if entry.meanings:
+                chip_layout.addWidget(self._plain_label(
+                    entry.meanings[0],
+                    MUTED_COLOR,
+                    META_FONT_SIZE,
+                    QFont.Weight.Normal,
+                    content_width,
+                ))
+            self._finalize_fixed_height(chip)
+            layout.addWidget(chip)
+        self._finalize_flow_container(container, layout, content_width)
+        return container
+
+    def _kanji_strip(self, entries: list[KanjiEntry]) -> QWidget:
+        content_width = self._content_width()
+        container = QWidget()
+        container.setFixedWidth(content_width)
+        container.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        container.setStyleSheet(transparent_stylesheet())
+
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(7)
+
+        gap = 7
+        column_width = (content_width - gap) // 2
+        for row_start in range(0, len(entries), 2):
+            row = QWidget()
+            row.setFixedWidth(content_width)
+            row.setStyleSheet(transparent_stylesheet())
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setSpacing(gap)
+            row_entries = entries[row_start:row_start + 2]
+            cards = [self._kanji_mini_card(entry, column_width) for entry in row_entries]
+            row_height = max((card.height() for card in cards), default=0)
+            for card in cards:
+                card.setFixedHeight(row_height)
+                row_layout.addWidget(card)
+            if len(row_entries) == 1:
+                row_layout.addStretch(1)
+            self._finalize_fixed_height(row)
+            layout.addWidget(row)
+
+        self._finalize_fixed_height(container)
+        return container
+
+    def _kanji_mini_card(self, entry: KanjiEntry, width: int) -> QFrame:
+        card = QFrame()
+        card.setFixedWidth(width)
+        card.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        card.setStyleSheet(
+            f"background-color: {POPUP.kanji_card_bg}; "
+            f"border: 1px solid {POPUP.kanji_card_border}; "
+            f"border-radius: {POPUP.kanji_card_radius}px;"
+        )
+
+        layout = QHBoxLayout(card)
+        layout.setContentsMargins(7, 7, 7, 7)
+        layout.setSpacing(7)
+
+        glyph = QFrame()
+        glyph.setFixedSize(38, 38)
+        glyph.setStyleSheet(kanji_glyph_stylesheet())
+        glyph_layout = QVBoxLayout(glyph)
+        glyph_layout.setContentsMargins(0, 0, 0, 0)
+        glyph_layout.setSpacing(0)
+        glyph_label = self._plain_label(
+            entry.character,
+            WORD_COLOR,
+            26,
+            QFont.Weight.DemiBold,
+            38,
+        )
+        glyph_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        glyph_layout.addWidget(glyph_label, 0, Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(glyph, 0, Qt.AlignmentFlag.AlignTop)
+
+        body_width = width - 14 - 38 - 7
+        body = QWidget()
+        body.setFixedWidth(body_width)
+        body.setStyleSheet(transparent_stylesheet())
+        body_layout = QVBoxLayout(body)
+        body_layout.setContentsMargins(0, 0, 0, 0)
+        body_layout.setSpacing(2)
+
+        readings = self._join_escaped(entry.readings)
+        if readings:
+            body_layout.addWidget(self._rich_label(
+                f'<span style="color:{READING_COLOR}; font-weight:700;">[{readings}]</span>',
+                READING_COLOR,
+                META_FONT_SIZE,
+                body_width,
+            ))
+        meanings = self._join_escaped(entry.meanings[:3])
+        if meanings:
+            body_layout.addWidget(self._rich_label(meanings, MUTED_COLOR, DETAIL_FONT_SIZE, body_width))
+
+        self._finalize_fixed_height(body)
+        layout.addWidget(body, 1)
+        self._finalize_fixed_height(card)
+        return card
+
+    def _kanji_card(self, entry: KanjiEntry, include_details: bool) -> QFrame:
+        content_width = self._content_width()
         card = QFrame()
         card.setObjectName("kanjiCard")
-        card.setFixedWidth(CONTENT_WIDTH)
+        card.setFixedWidth(content_width)
         card.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         card.setStyleSheet(kanji_card_stylesheet())
 
@@ -701,7 +891,7 @@ class Popup(QWidget):
         glyph_layout.addWidget(glyph_label, 0, Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(glyph, 0, Qt.AlignmentFlag.AlignTop)
 
-        right_width = CONTENT_WIDTH - 16 - 48 - 9
+        right_width = content_width - 16 - 48 - 9
         details = QWidget()
         details.setFixedWidth(right_width)
         details.setStyleSheet(transparent_stylesheet())
@@ -724,12 +914,13 @@ class Popup(QWidget):
                 details_layout.addSpacing(POPUP.kanji_body_row_gap)
             details_layout.addWidget(self._rich_label(meanings, DEFINITION_COLOR, DEFINITION_FONT_SIZE, right_width))
 
-        examples_html = self._kanji_examples_html(entry)
-        components_html = self._kanji_components_html(entry)
-        if examples_html or components_html:
-            if details_layout.count() > 0:
-                details_layout.addSpacing(POPUP.kanji_detail_top_gap)
-            details_layout.addWidget(self._kanji_detail_block(examples_html, components_html, right_width))
+        if include_details:
+            examples_html = self._kanji_examples_html(entry)
+            components_html = self._kanji_components_html(entry)
+            if examples_html or components_html:
+                if details_layout.count() > 0:
+                    details_layout.addSpacing(POPUP.kanji_detail_top_gap)
+                details_layout.addWidget(self._kanji_detail_block(examples_html, components_html, right_width))
 
         layout.addWidget(details, 1)
         self._finalize_fixed_height(card)
@@ -1064,6 +1255,12 @@ class Popup(QWidget):
             self._previous_active_app_on_mac = None
 
     def reapply_settings(self):
-        logger.debug("Popup: Re-applying fixed popup styling.")
+        logger.debug("Popup: Re-applying popup styling and layout settings.")
+        self._sync_layout_tier()
         self._apply_frame_stylesheet()
-        self._resize_to_content()
+        with self._data_lock:
+            data = self._last_latest_data or self._latest_data
+        if data:
+            self._set_entries(data)
+        else:
+            self._resize_to_content()

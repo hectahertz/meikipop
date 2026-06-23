@@ -18,7 +18,14 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from meikikai.config.config import APP_NAME, MIN_AUTO_SCAN_INTERVAL_SECONDS, config
+from meikikai.config.config import (
+    APP_NAME,
+    MIN_AUTO_SCAN_INTERVAL_SECONDS,
+    POPUP_GLOSSES_PER_SENSE_OPTIONS,
+    POPUP_SENSES_PER_ENTRY_OPTIONS,
+    POPUP_VOCAB_ENTRIES_OPTIONS,
+    config,
+)
 from meikikai.gui.design import DIALOG, apply_dialog_style, dialog_title, separator, set_button_variant
 from meikikai.gui.popup import Popup
 from meikikai.gui.screen_ai_setup_dialog import ScreenAiSetupDialog
@@ -122,6 +129,37 @@ class SettingsDialog(QDialog):
             "Minimum time between OCR scans\nCan reduce system load, but worsens perceived latency")
         self._prepare_numeric_control(self.auto_scan_interval_spin, 76)
 
+        self.popup_layout_map = {
+            "Compact": "compact",
+            "Standard": "standard",
+            "Complete": "complete",
+        }
+        self.popup_layout_combo = QComboBox()
+        self.popup_layout_combo.addItems(list(self.popup_layout_map.keys()))
+        current_layout_name = next(
+            (k for k, v in self.popup_layout_map.items() if v == config.popup_layout), "Complete"
+        )
+        self.popup_layout_combo.setCurrentText(current_layout_name)
+        self._prepare_popup_control(self.popup_layout_combo)
+
+        self.popup_entries_combo = QComboBox()
+        for value in POPUP_VOCAB_ENTRIES_OPTIONS:
+            self.popup_entries_combo.addItem(str(value), value)
+        self._set_combo_data(self.popup_entries_combo, config.popup_vocab_entries)
+        self._prepare_popup_control(self.popup_entries_combo)
+
+        self.popup_senses_combo = QComboBox()
+        for value in POPUP_SENSES_PER_ENTRY_OPTIONS:
+            self.popup_senses_combo.addItem(str(value), value)
+        self._set_combo_data(self.popup_senses_combo, config.popup_senses_per_entry)
+        self._prepare_popup_control(self.popup_senses_combo)
+
+        self.popup_glosses_combo = QComboBox()
+        for value in POPUP_GLOSSES_PER_SENSE_OPTIONS:
+            self.popup_glosses_combo.addItem(str(value), value)
+        self._set_combo_data(self.popup_glosses_combo, config.popup_glosses_per_sense)
+        self._prepare_popup_control(self.popup_glosses_combo)
+
         self.popup_mode_map = {
             "Visual Novel Mode": "visual_novel_mode",
             "Flip Both": "flip_both",
@@ -169,11 +207,33 @@ class SettingsDialog(QDialog):
         main_layout.addSpacing(DIALOG.section_gap)
         main_layout.addWidget(self._section(
             "Popup",
-            [self._setting_row(
-                "Placement",
-                "Where the popup appears near the cursor.",
-                self.popup_position_combo,
-            )],
+            [
+                self._setting_row(
+                    "Popup layout",
+                    "Controls spacing, metadata shape, and kanji shape.",
+                    self.popup_layout_combo,
+                ),
+                self._setting_row(
+                    "Entries shown",
+                    "Vocabulary entries shown before the omitted-entry footer.",
+                    self.popup_entries_combo,
+                ),
+                self._setting_row(
+                    "Senses per entry",
+                    "Numbered definition groups shown for each vocabulary entry.",
+                    self.popup_senses_combo,
+                ),
+                self._setting_row(
+                    "Glosses per sense",
+                    "Comma-separated translation glosses shown inside each sense.",
+                    self.popup_glosses_combo,
+                ),
+                self._setting_row(
+                    "Placement",
+                    "Where the popup appears near the cursor.",
+                    self.popup_position_combo,
+                ),
+            ],
         ))
         main_layout.addSpacing(DIALOG.section_gap)
         main_layout.addWidget(self._section(
@@ -301,6 +361,11 @@ class SettingsDialog(QDialog):
         control.setFixedWidth(width)
         control.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
+    def _set_combo_data(self, combo, value):
+        index = combo.findData(value)
+        if index >= 0:
+            combo.setCurrentIndex(index)
+
     def _section(self, title, rows):
         section = QWidget()
         section.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -395,6 +460,12 @@ class SettingsDialog(QDialog):
     def save_and_accept(self):
         config.max_lookup_length = self.max_lookup_spin.value()
         config.auto_scan_interval_seconds = self.auto_scan_interval_spin.value()
+
+        selected_layout_name = self.popup_layout_combo.currentText()
+        config.popup_layout = self.popup_layout_map.get(selected_layout_name, "complete")
+        config.popup_vocab_entries = int(self.popup_entries_combo.currentData())
+        config.popup_senses_per_entry = int(self.popup_senses_combo.currentData())
+        config.popup_glosses_per_sense = int(self.popup_glosses_combo.currentData())
 
         selected_friendly_name = self.popup_position_combo.currentText()
         config.popup_position_mode = self.popup_mode_map.get(selected_friendly_name, "visual_novel_mode")

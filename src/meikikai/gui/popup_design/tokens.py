@@ -15,6 +15,23 @@ def rgba(rgb: Rgb, alpha: int) -> str:
 
 
 @dataclass(frozen=True)
+class PopupLayoutTier:
+    width: int
+    content_margin_left: int
+    content_margin_top: int
+    content_margin_right: int
+    content_margin_bottom: int
+    show_metadata: bool
+    show_deconjugation: bool
+    kanji_presentation: str
+
+    @property
+    def content_width(self) -> int:
+        # Subtract the frame border so fixed-width content does not fight the 1 px outline.
+        return self.width - self.content_margin_left - self.content_margin_right - 2
+
+
+@dataclass(frozen=True)
 class PopupTokens:
     font_family: str = "Hiragino Sans"
     font_stack_qss: str = '"SF Pro Text", "Helvetica Neue", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif'
@@ -74,14 +91,50 @@ class PopupTokens:
     kanji_detail_label_gap: int = 4
     kanji_detail_line_height_percent: int = 100
 
-    max_vocab_entries: int = 3
     max_senses_per_entry: int = 3
     max_glosses_per_sense: int = 4
+
+    compact_width: int = 344
+    standard_width: int = 420
 
     @property
     def content_width(self) -> int:
         # Subtract the frame border so fixed-width content does not fight the 1 px outline.
         return self.width - self.content_margin_left - self.content_margin_right - 2
+
+    def layout_tier(self, layout: str) -> PopupLayoutTier:
+        if layout == "compact":
+            return PopupLayoutTier(
+                width=self.compact_width,
+                content_margin_left=10,
+                content_margin_top=9,
+                content_margin_right=10,
+                content_margin_bottom=11,
+                show_metadata=False,
+                show_deconjugation=False,
+                kanji_presentation="chip",
+            )
+        if layout == "standard":
+            return PopupLayoutTier(
+                width=self.standard_width,
+                content_margin_left=11,
+                content_margin_top=10,
+                content_margin_right=11,
+                content_margin_bottom=13,
+                show_metadata=True,
+                show_deconjugation=True,
+                kanji_presentation="compact",
+            )
+        return PopupLayoutTier(
+            width=self.width,
+            content_margin_left=self.content_margin_left,
+            content_margin_top=self.content_margin_top,
+            content_margin_right=self.content_margin_right,
+            content_margin_bottom=self.content_margin_bottom,
+            show_metadata=True,
+            show_deconjugation=True,
+            kanji_presentation="full",
+        )
 
 
 POPUP = PopupTokens()

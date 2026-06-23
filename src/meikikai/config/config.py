@@ -12,6 +12,10 @@ APP_NAME = "MeikiKai"
 APP_VERSION = __version__
 MAX_DICT_ENTRIES = 10
 MIN_AUTO_SCAN_INTERVAL_SECONDS = 0.1
+POPUP_LAYOUT_OPTIONS = ("compact", "standard", "complete")
+POPUP_VOCAB_ENTRIES_OPTIONS = (1, 2, 3)
+POPUP_SENSES_PER_ENTRY_OPTIONS = (1, 2, 3)
+POPUP_GLOSSES_PER_SENSE_OPTIONS = (1, 2, 4)
 IS_MACOS = sys.platform == 'darwin'
 
 if not IS_MACOS:
@@ -30,6 +34,10 @@ class Config:
             'auto_scan_interval_seconds': 0.5,
             'auto_pause_media': False,
             'popup_position_mode': 'visual_novel_mode',
+            'popup_layout': 'complete',
+            'popup_vocab_entries': 3,
+            'popup_senses_per_entry': 3,
+            'popup_glosses_per_sense': 4,
             'anki_connect_url': 'http://127.0.0.1:8765',
             'anki_capture_screenshot': True,
         }
@@ -64,6 +72,14 @@ class Config:
                     val = default
                 if key == 'auto_scan_interval_seconds':
                     val = max(MIN_AUTO_SCAN_INTERVAL_SECONDS, val)
+                elif key == 'popup_layout' and val not in POPUP_LAYOUT_OPTIONS:
+                    val = default
+                elif key == 'popup_vocab_entries' and val not in POPUP_VOCAB_ENTRIES_OPTIONS:
+                    val = default
+                elif key == 'popup_senses_per_entry' and val not in POPUP_SENSES_PER_ENTRY_OPTIONS:
+                    val = default
+                elif key == 'popup_glosses_per_sense' and val not in POPUP_GLOSSES_PER_SENSE_OPTIONS:
+                    val = default
                 setattr(self, key, val)
 
         self.is_paused = False
