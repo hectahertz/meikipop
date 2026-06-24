@@ -83,6 +83,8 @@ class AnkiExportWorker(threading.Thread):
             if not self._setup_complete:
                 setup_meikikai_note_type(self._client, self.deck_name, self.model_name)
                 self._setup_complete = True
+            else:
+                self._client.create_deck(self.deck_name)
 
             if note_exists_for_key(self._client, self.model_name, payload.key):
                 raise DuplicateNoteError("MeikiKai duplicate key already exists.")
