@@ -132,7 +132,7 @@ MeikiKai can create recognition cards through AnkiConnect from the top visible v
 
 <p align="center">
   <img width="496" alt="MeikiKai Anki card back example" src="design/card-back.png"><br>
-  <sub>Screenshot content from <a href="https://www.youtube.com/watch?v=FV1uXLlfN20">“1 hour Japanese immersion: Comprehensible Listening Practice! N5-N3 #149”</a> by <a href="https://www.youtube.com/@kensanokaeri">けんさんおかえり Japanese</a>.</sub>
+  <sub>Screenshot content from <a href="https://www.youtube.com/watch?v=u5rQn2UM37A">“45 mins N4 Japanese immersion! / Let's go cycling! #129”</a> by <a href="https://www.youtube.com/@kensanokaeri">けんさんおかえり Japanese</a>.</sub>
 </p>
 
 Export behavior:
