@@ -301,6 +301,16 @@ class Popup(QWidget):
     def get_latest_jisho_query(self):
         return self._get_latest_top_entry_expression()
 
+    def get_latest_speech_text(self):
+        with self._data_lock:
+            data = self._last_latest_data
+        if not self.is_visible or config.is_paused:
+            return None
+        entry = self._top_visible_dictionary_entry(data)
+        if not entry:
+            return None
+        return entry.reading or entry.written_form
+
     def _get_latest_top_entry_expression(self):
         with self._data_lock:
             data = self._last_latest_data

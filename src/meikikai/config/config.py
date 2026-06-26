@@ -17,6 +17,7 @@ POPUP_LAYOUT_OPTIONS = ("compact", "standard", "complete")
 POPUP_VOCAB_ENTRIES_OPTIONS = (1, 2, 3)
 POPUP_SENSES_PER_ENTRY_OPTIONS = (1, 2, 3)
 POPUP_GLOSSES_PER_SENSE_OPTIONS = (1, 2, 4)
+DEFAULT_SHORTCUTS_TTS_SHORTCUT_NAME = "Meikikai Siri TTS"
 IS_MACOS = sys.platform == 'darwin'
 
 if not IS_MACOS:
@@ -42,6 +43,8 @@ class Config:
             'popup_glosses_per_sense': 4,
             'anki_connect_url': 'http://127.0.0.1:8765',
             'anki_capture_screenshot': True,
+            'shortcuts_tts_enabled': False,
+            'anki_attach_tts_audio': False,
         }
     }
 

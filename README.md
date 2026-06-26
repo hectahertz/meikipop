@@ -17,7 +17,7 @@ MeikiKai is a fork of [rtr46/meikipop](https://github.com/rtr46/meikipop). It is
 - Lets you choose the scan target: one display or all displays.
 - Provides popup density controls: layout, number of entries, senses per entry, and glosses per sense.
 - Uses Nord as the default popup theme, with Nazeka, Catppuccin, and Kanagawa Wave available.
-- Can copy the top visible entry, open it on Jisho.org, or export it directly to Anki.
+- Can copy the top visible entry, speak its reading, open it on Jisho.org, or export it directly to Anki.
 - Can optionally pause macOS Now Playing media while the popup is visible, then resume only media it paused.
 
 ## Popup layouts
@@ -111,20 +111,22 @@ On first run:
 | --- | --- |
 | `Ctrl+Shift+C` | Copy the top visible vocabulary expression. |
 | `Ctrl+Shift+J` | Open a Jisho.org search for the top visible vocabulary expression. |
+| `Ctrl+Shift+P` | Speak the top visible vocabulary reading or expression when Speech is enabled. |
 | `Ctrl+Shift+M` | Export the top visible vocabulary entry to Anki. |
 
 The menu bar icon provides pause, media auto-pause, settings, scan-screen selection, and quit.
 
 ## Settings
 
-Settings are saved to `~/Library/Application Support/meikikai/config.ini`.
+Settings are saved to `~/Library/Application Support/meikikai/config.ini` and organized into pages.
 
-- **Lookup**: maximum lookup length.
-- **Scanning**: OCR scan cooldown.
+- **General**: lookup length, scan cooldown, and Chrome Screen AI management.
 - **Popup**: theme, layout, entries shown, senses per entry, glosses per sense, and placement around the cursor.
-- **OCR Engine**: Chrome Screen AI status, install/reinstall/update, third-party notices, and uninstall.
 - **Anki**: AnkiConnect URL and whether to open the native macOS cropper before card creation.
+- **Speech**: Shortcuts TTS toggle, shortcut status, setup instructions, test voice button, and whether to attach generated audio to Anki cards.
 - **Shortcuts**: read-only reminder of the global shortcuts.
+
+For Speech, create a macOS Shortcut named `Meikikai Siri TTS` that receives Text from Shortcut Input, then add **Make Spoken Audio from Shortcut Input** as the final action. Choose the voice inside that action, and do not add **Stop and Output** after it. With Speech enabled, `Ctrl+Shift+P` speaks the visible top entry using its reading when available, otherwise its expression.
 
 ## Anki export
 
@@ -142,7 +144,9 @@ Export behavior:
 - Refuses unsafe note-type changes if an incompatible existing note type already contains notes.
 - Adds tags `meikikai` and `meikikai-vocab`.
 - Blocks duplicates using MeikiKai's `Key` field, based on entry ID, expression, and reading.
-- Includes expression, reading, lookup text, highlighted sentence, definitions, part-of-speech, tags, frequency, deconjugation, kanji info, entry ID, and an optional cropped image.
+- Includes expression, reading, lookup text, highlighted sentence, definitions, part-of-speech, tags, frequency, deconjugation, kanji info, entry ID, and optional cropped image/audio fields.
+- If Speech and Attach audio to Anki are enabled, generates word audio with the `Meikikai Siri TTS` Shortcut, converts it to `.m4a`, uploads it through AnkiConnect, and attaches it as a `[sound:...]` field.
+- Audio-enabled cards use a centered word-card back layout with a replay button; cards without audio keep the legacy back layout.
 - By default, opens the native macOS crop UI before adding the card. Press Esc to cancel card creation, or disable image capture in Settings.
 
 ## Dictionaries

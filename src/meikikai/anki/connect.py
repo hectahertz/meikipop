@@ -17,7 +17,8 @@ from meikikai.anki.cards import (
 
 logger = logging.getLogger(__name__)
 
-LEGACY_FIELD_NAMES = [field for field in FIELD_NAMES if field != "Screenshot"]
+MIGRATABLE_FIELD_NAMES = {"Screenshot", "WordAudio"}
+REQUIRED_FIELD_NAMES = [field for field in FIELD_NAMES if field not in MIGRATABLE_FIELD_NAMES]
 
 ANKI_CONNECT_VERSION = 6
 DEFAULT_TIMEOUT_SECONDS = 2.5
@@ -251,10 +252,7 @@ def make_note(deck_name: str, model_name: str, fields: dict[str, str]) -> AnkiNo
 def _fields_compatible(fields: list[str]) -> bool:
     if not fields or fields[0] != "Key":
         return False
-    return (
-        all(field in fields for field in FIELD_NAMES)
-        or all(field in fields for field in LEGACY_FIELD_NAMES)
-    )
+    return all(field in fields for field in REQUIRED_FIELD_NAMES)
 
 
 def _add_missing_model_fields(client: AnkiConnectClient, model_name: str, fields: list[str]):

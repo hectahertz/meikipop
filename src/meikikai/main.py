@@ -22,6 +22,7 @@ from meikikai.gui.tray import TrayIcon
 from meikikai.ocr.hit_scan import HitScanner
 from meikikai.ocr.ocr import OcrProcessor
 from meikikai.screenshot.screenmanager import ScreenManager
+from meikikai.tts.worker import SpeechPlaybackNotifier, ShortcutsSpeechWorker
 from meikikai.utils.capture_state import begin_capture_interaction, end_capture_interaction
 from meikikai.utils.latest_queue import LatestValueQueue
 from meikikai.utils.paths import paths
@@ -166,6 +167,9 @@ def run_gui():
     clipboard_controller.message.connect(tray_icon.show_status_message)
     jisho_controller = JishoSearchController(popup_window)
     jisho_controller.message.connect(tray_icon.show_status_message)
+    speech_notifier = SpeechPlaybackNotifier()
+    speech_notifier.message.connect(tray_icon.show_status_message)
+    speech_worker = ShortcutsSpeechWorker(speech_notifier)
     anki_worker = AnkiExportWorker(
         config.anki_connect_url,
         DECK_NAME,
@@ -248,13 +252,40 @@ def run_gui():
         jisho_controller.search_requested.emit(query)
         return True
 
+    def speak_latest_entry():
+        if not config.shortcuts_tts_enabled:
+            speech_notifier.message.emit(
+                "Speech disabled",
+                "Enable Shortcuts TTS in Settings → Speech, then Save.",
+                "warning",
+            )
+            return True
+
+        text = popup_window.get_latest_speech_text()
+        if not text:
+            speech_notifier.message.emit(
+                "Speech skipped",
+                "No visible vocabulary entry to speak.",
+                "warning",
+            )
+            return True
+
+        if not speech_worker.submit(text):
+            speech_notifier.message.emit(
+                "Speech already running",
+                "Wait for the current speech request to finish.",
+                "warning",
+            )
+        return True
+
     global_hotkeys = GlobalHotkeyListener(
         export_latest_to_anki,
         copy_latest_to_clipboard,
         search_latest_on_jisho,
+        speak_latest_entry,
     )
 
-    for t in [lookup, hit_scanner, ocr_processor, screen_manager, input_loop, anki_worker]:
+    for t in [lookup, hit_scanner, ocr_processor, screen_manager, input_loop, anki_worker, speech_worker]:
         t.start()
     global_hotkeys.start()
 
@@ -268,6 +299,7 @@ def run_gui():
       - To configure or change scan screen: Right-click the menu bar icon.
       - To copy the visible top entry expression: Ctrl+Shift+C.
       - To search the visible top entry on Jisho.org: Ctrl+Shift+J.
+      - To speak the visible top entry reading or expression: Ctrl+Shift+P.
       - To export the visible top entry to Anki: Ctrl+Shift+M.
       - To exit: Press Ctrl+C in this terminal.
 
@@ -284,6 +316,7 @@ def run_gui():
 
     global_hotkeys.stop()
     anki_worker.stop()
+    speech_worker.stop()
     shared_state.running = False
     shared_state.screenshot_trigger_event.set()
     shared_state.ocr_queue.put(None)

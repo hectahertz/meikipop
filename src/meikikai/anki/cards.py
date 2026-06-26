@@ -43,6 +43,7 @@ FIELD_NAMES = [
     "Key",
     "Expression",
     "Reading",
+    "WordAudio",
     "LookupText",
     "Sentence",
     "SentenceHighlighted",
@@ -65,6 +66,7 @@ CLOSING_QUOTES = set("」』）】〉》\"'")
 class VocabCardPayload:
     key: str
     expression: str
+    word_speech_text: str
     fields: dict[str, str]
 
 
@@ -120,7 +122,13 @@ def build_vocab_card_payload(data) -> Optional[VocabCardPayload]:
         "KanjiInfo": _kanji_info_html(entries),
         "EntryID": str(entry.id),
     })
-    return VocabCardPayload(key=key, expression=entry.written_form, fields=fields)
+    word_speech_text = (entry.reading or entry.written_form or "").strip()
+    return VocabCardPayload(
+        key=key,
+        expression=entry.written_form,
+        word_speech_text=word_speech_text,
+        fields=fields,
+    )
 
 
 def _lookup_text(data, entry: DictionaryEntry) -> str:
@@ -340,7 +348,25 @@ FRONT_TEMPLATE = """
 </div>
 """.strip()
 
-BACK_TEMPLATE = """
+AUDIO_BACK_TEMPLATE = """
+<div class="mk-study-layout mk-card-root">
+  <div class="mk-study-expression">
+    {{#Reading}}<div class="mk-study-reading">{{Reading}}</div>{{/Reading}}
+    <div class="mk-study-word">{{Expression}}</div>
+  </div>
+
+  {{#PrimaryDefinition}}<div class="mk-study-definition">{{PrimaryDefinition}}</div>{{/PrimaryDefinition}}
+  {{#SentenceHighlighted}}<div class="mk-study-sentence">{{SentenceHighlighted}}</div>{{/SentenceHighlighted}}
+
+  <div class="mk-audio-row">
+    <span class="mk-audio-item">{{WordAudio}}</span>
+  </div>
+
+  {{#Screenshot}}<div class="mk-study-screenshot">{{Screenshot}}</div>{{/Screenshot}}
+</div>
+""".strip()
+
+LEGACY_BACK_TEMPLATE = """
 <div class="mk-back-layout mk-card-root">
   <div class="mk-card mk-front-card mk-back-sentence-card">
     <div class="mk-front-sentence">{{SentenceHighlighted}}</div>
@@ -372,6 +398,15 @@ BACK_TEMPLATE = """
 </div>
 """.strip()
 
+BACK_TEMPLATE = (
+    "{{#WordAudio}}\n"
+    + AUDIO_BACK_TEMPLATE
+    + "\n{{/WordAudio}}\n"
+    + "{{^WordAudio}}\n"
+    + LEGACY_BACK_TEMPLATE
+    + "\n{{/WordAudio}}"
+).strip()
+
 CARD_CSS = f"""
 .card {{
   margin: 0;
@@ -393,6 +428,70 @@ CARD_CSS = f"""
 
 .mk-card-root {{
   margin-top: 28px;
+}}
+
+.mk-study-layout {{
+  box-sizing: border-box;
+  color: {TEXT_COLOR};
+  margin: 0 auto;
+  max-width: calc(100vw - 24px);
+  padding-top: 22px;
+  text-align: center;
+  width: {POPUP_WIDTH}px;
+}}
+
+.mk-study-reading {{
+  color: {TEXT_COLOR};
+  font-size: 18px;
+  line-height: 1;
+  margin-bottom: 1px;
+}}
+
+.mk-study-word {{
+  color: {TEXT_COLOR};
+  font-size: 46px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.08;
+}}
+
+.mk-study-definition {{
+  color: {TEXT_COLOR};
+  font-size: 28px;
+  line-height: 1.25;
+  margin-top: 18px;
+}}
+
+.mk-study-sentence {{
+  color: {TEXT_COLOR};
+  font-size: 25px;
+  line-height: 1.48;
+  margin-top: 30px;
+}}
+
+.mk-study-sentence .mk-highlight {{
+  color: {WORD_COLOR};
+  font-weight: 700;
+  text-decoration: none;
+}}
+
+.mk-study-screenshot {{
+  margin-top: 26px;
+  text-align: center;
+}}
+
+.mk-study-screenshot img {{
+  border-radius: 16px;
+  display: inline-block;
+  height: auto;
+  max-height: 360px;
+  max-width: 76%;
+  width: auto;
+}}
+
+.mk-study-layout .mk-audio-row {{
+  gap: 22px;
+  margin: 24px 0 0;
 }}
 
 .mk-front-card,
@@ -474,6 +573,25 @@ CARD_CSS = f"""
   color: {READING_COLOR};
   font-size: {READING_FONT_SIZE}px;
   font-weight: 500;
+}}
+
+.mk-audio-row {{
+  align-items: center;
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  margin: 18px 0 2px;
+}}
+
+.mk-audio-item {{
+  align-items: center;
+  display: inline-flex;
+  line-height: 1;
+}}
+
+.mk-audio-row .replay-button,
+.mk-audio-row .replaybutton {{
+  margin: 0;
 }}
 
 .mk-meta-row {{
